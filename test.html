@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./index.js"></script>
+</head>
+
+<body>
+    <input type="file" id="input-file" />
+</body>
+<script>
+    const inputfile = document.getElementById('input-file');
+    console.log(window.cv);
+
+    function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+    }
+
+    function downloadFile(url, name = 'What\'s the fuvk') {
+        var a = document.createElement("a")
+        a.setAttribute("href", url)
+        a.setAttribute("download", name)
+        a.setAttribute("target", "_blank")
+        let clickEvent = document.createEvent("MouseEvents");
+        clickEvent.initEvent("click", true, true);
+        a.dispatchEvent(clickEvent);
+    }
+    inputfile.addEventListener('change', async () => {
+        if (inputfile.files) {
+
+            const file = inputfile.files[0];
+
+            console.time('resolve and deal')
+            const mat = await window.cv.readAsData(file);
+            cv.gray(mat);
+
+            console.timeEnd('resolve and deal')
+
+            const canvas = document.createElement('canvas');
+            canvas.width = mat.cols;
+            canvas.height = mat.rows;
+
+            const imageData = new ImageData(mat.data, mat.cols, mat.rows);
+
+            const ctx = canvas.getContext('2d');
+
+            ctx.putImageData(imageData, 0, 0);
+  
+            const blob = dataURLtoBlob(canvas.toDataURL());
+
+            const url =URL.createObjectURL(blob);
+
+            downloadFile(url, file.name);
+
+
+            inputfile.value = '';
+        }
+    })
+</script>
+
+</html>
