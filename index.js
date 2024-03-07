@@ -5,28 +5,28 @@ class ImageResolver {
     resolveWithUrl(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
-            img.addEventListener('load', () => {
-                const cavans = document.createElement('canvas');
+            img.addEventListener("load", () => {
+                const cavans = document.createElement("canvas");
                 cavans.width = img.width;
                 cavans.height = img.height;
-                const ctx = cavans.getContext('2d');
+                const ctx = cavans.getContext("2d");
                 ctx.drawImage(img, 0, 0);
                 const imageData = ctx.getImageData(0, 0, cavans.width, cavans.height);
                 resolve(new Mat(imageData));
                 img.remove();
                 cavans.remove();
             });
-            img.addEventListener('error', (...args) => {
+            img.addEventListener("error", (...args) => {
                 reject(args[1]);
             });
-            img.setAttribute('src', url);
+            img.setAttribute("src", url);
         });
     }
-    // base64 或者非跨域url   
+    // base64 或者非跨域url
     async readAsDataUrl(url) {
         if (!url) {
             8;
-            errorlog('no url！');
+            errorlog("no url！");
         }
         try {
             const mat = await this.resolveWithUrl(url);
@@ -39,7 +39,7 @@ class ImageResolver {
     // 读取blob 或 file对象
     async readAsData(blob) {
         if (!blob.size) {
-            errorlog('no content blob');
+            errorlog("no content blob");
         }
         const url = URL.createObjectURL(blob);
         try {
@@ -57,14 +57,14 @@ class ImageResolver {
         mat.recycle((pixel, row, col) => {
             const [R, G, B] = pixel;
             if (R + G + B >= NR + NG + NB) {
-                mat.update(row, col, 'R', 255);
-                mat.update(row, col, 'G', 255);
-                mat.update(row, col, 'B', 255);
+                mat.update(row, col, "R", 255);
+                mat.update(row, col, "G", 255);
+                mat.update(row, col, "B", 255);
             }
         });
     }
     // 图像的纯色化处理 （非白非透明转为指定颜色）
-    gray(mat, color = '#000000') {
+    native(mat, color = "#000000") {
         const c = color.slice(1);
         const [NR, NG, NB] = [
             Number(`0x${c.slice(0, 2)}`),
@@ -74,28 +74,28 @@ class ImageResolver {
         mat.recycle((pixel, row, col) => {
             const [R, G, B] = pixel;
             if (R !== 255 || G !== 255 || B !== 255) {
-                mat.update(row, col, 'R', NR);
-                mat.update(row, col, 'G', NG);
-                mat.update(row, col, 'B', NB);
+                mat.update(row, col, "R", NR);
+                mat.update(row, col, "G", NG);
+                mat.update(row, col, "B", NB);
             }
         });
     }
     // 图像的透明像素转换为指定颜色（默认白）
-    dropTransparent(mat, color = '#FFFFFFff') {
+    dropTransparent(mat, color = "#FFFFFFff") {
         const c = color.slice(1);
         const [NR, NG, NB, NA] = [
             Number(`0x${c.slice(0, 2)}`),
             Number(`0x${c.slice(2, 4)}`),
             Number(`0x${c.slice(4, 6)}`),
-            c.length >= 8 ? Number(`0x${c.slice(6, 8)}`) : 255
+            c.length >= 8 ? Number(`0x${c.slice(6, 8)}`) : 255,
         ];
         mat.recycle((pixel, row, col) => {
             const [R, G, B, A] = pixel;
             if (A === 255) {
-                mat.update(row, col, 'R', NR);
-                mat.update(row, col, 'G', NG);
-                mat.update(row, col, 'B', NB);
-                mat.update(row, col, 'A', NA);
+                mat.update(row, col, "R", NR);
+                mat.update(row, col, "G", NG);
+                mat.update(row, col, "B", NB);
+                mat.update(row, col, "A", NA);
             }
         });
     }
@@ -103,10 +103,22 @@ class ImageResolver {
     colorRollback(mat) {
         mat.recycle((pixel, row, col) => {
             const [R, G, B, A] = pixel;
-            mat.update(row, col, 'R', 255 - R);
-            mat.update(row, col, 'G', 255 - G);
-            mat.update(row, col, 'B', 255 - B);
-            mat.update(row, col, 'A', 255 - A);
+            mat.update(row, col, "R", 255 - R);
+            mat.update(row, col, "G", 255 - G);
+            mat.update(row, col, "B", 255 - B);
+            mat.update(row, col, "A", 255 - A);
+        });
+    }
+    // f1(i,j)=R(i,j)f2(i,j)=G(i,j)f3(i,j)=B(i,j)
+    // Y = 0.2126 R + 0.7152 G + 0.0722 B
+    // 灰度化处理
+    gray(mat) {
+        mat.recycle((pixel, row, col) => {
+            const [R, G, B] = pixel;
+            const Gray = Math.round(R * 0.299 + G * 0.587 + B * 0.114);
+            mat.update(row, col, "R", Gray);
+            mat.update(row, col, "G", Gray);
+            mat.update(row, col, "B", Gray);
         });
     }
 }
@@ -125,7 +137,7 @@ class Mat {
     }
     update(row, col, type, value) {
         const { channels, rows, cols, data } = this;
-        const index = (cols * row * channels) + (col * channels);
+        const index = cols * row * channels + col * channels;
         switch (type) {
             case "R":
                 data[index] = value;
@@ -146,7 +158,7 @@ class Mat {
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 const b = callback(this.at(row, col), row, col);
-                if (b === 'break') {
+                if (b === "break") {
                     return;
                 }
             }
@@ -154,7 +166,7 @@ class Mat {
     }
     at(row, col) {
         const { channels, rows, cols, data } = this;
-        const index = (cols * row * channels) + (col * channels);
+        const index = cols * row * channels + col * channels;
         return [data[index], data[index + 1], data[index + 2], data[index + 3]];
     }
 }
