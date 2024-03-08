@@ -2,6 +2,9 @@ const errorlog = (text) => {
     throw Error(text);
 };
 class ImageResolver {
+    static GRAY_SCALE_RED = 0.299;
+    static GRAY_SCALE_GREEN = 0.587;
+    static GRAY_SCALE_BLUE = 0.114;
     resolveWithUrl(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -52,16 +55,31 @@ class ImageResolver {
     }
     // 图像的 浅色渐隐/深色渐隐      渐隐比例：0.50
     fade(mat, mode, percent) {
-        const per = percent * 255;
-        const [NR, NG, NB] = [per, per, per];
-        mat.recycle((pixel, row, col) => {
-            const [R, G, B] = pixel;
-            if (R + G + B >= NR + NG + NB) {
-                mat.update(row, col, "R", 255);
-                mat.update(row, col, "G", 255);
-                mat.update(row, col, "B", 255);
-            }
-        });
+        const per = mode === "in" ? 1 - percent : percent;
+        const C = per * 255;
+        const [R, G, B] = [C, C, C];
+        switch (mode) {
+            case "in":
+                mat.recycle((_pixel, row, col) => {
+                    const [NR, NG, NB] = mat.at(row, col);
+                    if (NR + NG + NB >= R + G + B) {
+                        mat.update(row, col, "R", 255);
+                        mat.update(row, col, "G", 255);
+                        mat.update(row, col, "B", 255);
+                    }
+                });
+                break;
+            case "out":
+                mat.recycle((_pixel, row, col) => {
+                    const [NR, NG, NB] = mat.at(row, col);
+                    if (NR + NG + NB <= R + G + B) {
+                        mat.update(row, col, "R", 255);
+                        mat.update(row, col, "G", 255);
+                        mat.update(row, col, "B", 255);
+                    }
+                });
+                break;
+        }
     }
     // 图像的纯色化处理 （非白非透明转为指定颜色）
     native(mat, color = "#000000") {
@@ -77,6 +95,36 @@ class ImageResolver {
                 mat.update(row, col, "R", NR);
                 mat.update(row, col, "G", NG);
                 mat.update(row, col, "B", NB);
+            }
+        });
+    }
+    // 纯色化反转
+    nativeRollback(mat) {
+        const currentColor = [0, 0, 0, 0];
+        mat.recycle((pixel) => {
+            const [R, G, B, A] = pixel;
+            if ((R !== 255 || G !== 255 || B !== 255) && A !== 255) {
+                currentColor[0] = R;
+                currentColor[1] = G;
+                currentColor[2] = B;
+                currentColor[3] = A;
+                return "break";
+            }
+        });
+        mat.recycle((pixel, row, col) => {
+            const [R, G, B] = pixel;
+            if (R === currentColor[0] &&
+                G === currentColor[1] &&
+                B === currentColor[2]) {
+                mat.update(row, col, "R", 255);
+                mat.update(row, col, "G", 255);
+                mat.update(row, col, "B", 255);
+            }
+            else {
+                mat.update(row, col, "R", currentColor[0]);
+                mat.update(row, col, "G", currentColor[1]);
+                mat.update(row, col, "B", currentColor[2]);
+                mat.update(row, col, "A", currentColor[3]);
             }
         });
     }
@@ -115,39 +163,42 @@ class ImageResolver {
     gray(mat) {
         mat.recycle((pixel, row, col) => {
             const [R, G, B] = pixel;
-            const Gray = Math.round(R * 0.299 + G * 0.587 + B * 0.114);
+            const Gray = ImageResolver.rgbToGray(R, G, B);
             mat.update(row, col, "R", Gray);
             mat.update(row, col, "G", Gray);
             mat.update(row, col, "B", Gray);
         });
     }
-    static gray(R, G, B) {
-        return Math.round(R * 0.299 + G * 0.587 + B * 0.114);
+    static rgbToGray(R, G, B) {
+        return Math.round(R * ImageResolver.GRAY_SCALE_RED +
+            G * ImageResolver.GRAY_SCALE_GREEN +
+            B * ImageResolver.GRAY_SCALE_BLUE);
     }
-    // 中值滤波算法，用于去除 椒盐噪点与胡椒噪点
+    // 中值模糊（中值滤波），用于去除 椒盐噪点与胡椒噪点
     medianBlur(mat, size) {
         if (size % 2 !== 1) {
             errorlog("size需为奇整数！");
         }
         const half = -Math.floor(size / 2);
         const absHalf = Math.abs(half);
-        mat.recycle((pixel, row, col) => {
+        mat.recycle((_pixel, row, col) => {
             const Gs = [];
+            // size * size 的像素矩阵
             for (let i = half; i <= absHalf; i++) {
                 for (let j = half; j <= absHalf; j++) {
                     const [R, G, B] = mat.at(row + i, col + j);
-                    const Gray = ImageResolver.gray(R, G, B);
+                    const Gray = ImageResolver.rgbToGray(R, G, B);
                     Gs.push({ gray: Gray, R, G, B });
                 }
             }
             if (!Gs.every((item) => item.gray))
                 return;
             // 取中位数
-            const { gray, R, G, B } = Gs.sort((a, b) => a.gray - b.gray)[Math.floor(Gs.length / 2)];
-            // const Gray = Math.round(R * 0.299 + G * 0.587 + B * 0.114);
-            mat.update(row, col, "R", Math.floor((gray - 0.114 * B - 0.587 * G) / 0.299));
-            mat.update(row, col, "G", Math.floor((gray - 0.114 * B - 0.299 * R) / 0.587));
-            mat.update(row, col, "B", Math.floor((gray - 0.299 * R - 0.587 * G) / 0.114));
+            const { R, G, B } = Gs.sort((a, b) => a.gray - b.gray)[Math.floor(Gs.length / 2)];
+            // 设置中位数灰度的还原色
+            mat.update(row, col, "R", R);
+            mat.update(row, col, "G", G);
+            mat.update(row, col, "B", B);
         });
     }
 }
@@ -164,21 +215,29 @@ class Mat {
         this.channels = 4;
         this.data = imageData.data;
     }
+    clone() {
+        const { data, size: { width, height }, } = this;
+        const imageData = new ImageData(data, height, width);
+        return new Mat(imageData);
+    }
+    delete() {
+        this.data = new Uint8ClampedArray(0);
+    }
     update(row, col, type, value) {
-        const { channels, rows, cols, data } = this;
-        const index = cols * row * channels + col * channels;
+        const { data } = this;
+        const [R, G, B, A] = this.getAddress(row, col);
         switch (type) {
             case "R":
-                data[index] = value;
+                data[R] = value;
                 break;
             case "G":
-                data[index + 1] = value;
+                data[G] = value;
                 break;
             case "B":
-                data[index + 2] = value;
+                data[B] = value;
                 break;
             case "A":
-                data[index + 3] = value;
+                data[A] = value;
                 break;
         }
     }
@@ -207,6 +266,38 @@ class Mat {
         const { data } = this;
         const [R, G, B, A] = this.getAddress(row, col);
         return [data[R], data[G], data[B], data[A]];
+    }
+    imgshow(canvas) {
+        const canvasEl = canvas instanceof HTMLCanvasElement
+            ? canvas
+            : document.querySelector(canvas);
+        if (!canvasEl) {
+            errorlog("无法找到canvas当前元素！");
+        }
+        const { data, size } = this;
+        const { width, height } = size;
+        const imageData = new ImageData(data, width, height);
+        canvasEl.width = width;
+        canvasEl.height = height;
+        const ctx = canvasEl.getContext("2d");
+        ctx.putImageData(imageData, 0, 0);
+    }
+    toDataUrl(type, quality = 1) {
+        const canvas = document.createElement("canvas");
+        void this.imgshow(canvas);
+        return canvas.toDataURL(type ?? "image/png", quality);
+    }
+    toBlob(type, quality = 1) {
+        return new Promise((resolve, reject) => {
+            const canvas = document.createElement("canvas");
+            void this.imgshow(canvas);
+            canvas.toBlob((blob) => {
+                if (!blob || !blob.size) {
+                    return reject("error: 转换失败");
+                }
+                resolve(blob);
+            }, type ?? "image/png", quality);
+        });
     }
 }
 window.cv = new ImageResolver();

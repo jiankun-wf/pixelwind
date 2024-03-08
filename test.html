@@ -41,7 +41,7 @@
 
         console.time("resolve and deal");
         const mat = await window.cv.readAsData(file);
-        cv.medianBlur(mat, 5);
+        cv.medianBlur(mat, 3);
 
         console.timeEnd("resolve and deal");
 
