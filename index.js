@@ -5,15 +5,15 @@ class ImageResolver {
     static GRAY_SCALE_RED = 0.299;
     static GRAY_SCALE_GREEN = 0.587;
     static GRAY_SCALE_BLUE = 0.114;
-    resolveWithUrl(url) {
+    resolveWithUrl(url, limitWidth, limitHeight) {
         return new Promise((resolve, reject) => {
-            const img = new Image();
+            const img = new Image(limitWidth ?? undefined, limitHeight ?? undefined);
             img.addEventListener("load", () => {
                 const cavans = document.createElement("canvas");
                 cavans.width = img.width;
                 cavans.height = img.height;
                 const ctx = cavans.getContext("2d");
-                ctx.drawImage(img, 0, 0);
+                ctx.drawImage(img, 0, 0, cavans.width, cavans.height);
                 const imageData = ctx.getImageData(0, 0, cavans.width, cavans.height);
                 resolve(new Mat(imageData));
                 img.remove();
@@ -25,14 +25,23 @@ class ImageResolver {
             img.setAttribute("src", url);
         });
     }
+    // client-only
+    readAsElement(img) {
+        const cavans = document.createElement("canvas");
+        cavans.width = img.width;
+        cavans.height = img.height;
+        const ctx = cavans.getContext("2d");
+        ctx.drawImage(img, 0, 0, cavans.width, cavans.height);
+        const imageData = ctx.getImageData(0, 0, cavans.width, cavans.height);
+        return new Mat(imageData);
+    }
     // base64 或者非跨域url
-    async readAsDataUrl(url) {
+    async readAsDataUrl(url, { width, height } = {}) {
         if (!url) {
-            8;
             errorlog("no url！");
         }
         try {
-            const mat = await this.resolveWithUrl(url);
+            const mat = await this.resolveWithUrl(url, width, height);
             return Promise.resolve(mat);
         }
         catch (e) {
@@ -40,13 +49,13 @@ class ImageResolver {
         }
     }
     // 读取blob 或 file对象
-    async readAsData(blob) {
+    async readAsData(blob, { width, height } = {}) {
         if (!blob.size) {
             errorlog("no content blob");
         }
         const url = URL.createObjectURL(blob);
         try {
-            const mat = await this.resolveWithUrl(url);
+            const mat = await this.resolveWithUrl(url, width, height);
             return Promise.resolve(mat);
         }
         catch (e) {
@@ -60,8 +69,8 @@ class ImageResolver {
         const [R, G, B] = [C, C, C];
         switch (mode) {
             case "in":
-                mat.recycle((_pixel, row, col) => {
-                    const [NR, NG, NB] = mat.at(row, col);
+                mat.recycle((pixel, row, col) => {
+                    const [NR, NG, NB] = pixel;
                     if (NR + NG + NB >= R + G + B) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
@@ -70,8 +79,8 @@ class ImageResolver {
                 });
                 break;
             case "out":
-                mat.recycle((_pixel, row, col) => {
-                    const [NR, NG, NB] = mat.at(row, col);
+                mat.recycle((pixel, row, col) => {
+                    const [NR, NG, NB] = pixel;
                     if (NR + NG + NB <= R + G + B) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
@@ -102,12 +111,11 @@ class ImageResolver {
     nativeRollback(mat) {
         const currentColor = [0, 0, 0, 0];
         mat.recycle((pixel) => {
-            const [R, G, B, A] = pixel;
-            if ((R !== 255 || G !== 255 || B !== 255) && A !== 255) {
+            const [R, G, B] = pixel;
+            if (R !== 255 || G !== 255 || B !== 255) {
                 currentColor[0] = R;
                 currentColor[1] = G;
                 currentColor[2] = B;
-                currentColor[3] = A;
                 return "break";
             }
         });
@@ -124,7 +132,6 @@ class ImageResolver {
                 mat.update(row, col, "R", currentColor[0]);
                 mat.update(row, col, "G", currentColor[1]);
                 mat.update(row, col, "B", currentColor[2]);
-                mat.update(row, col, "A", currentColor[3]);
             }
         });
     }
@@ -138,8 +145,8 @@ class ImageResolver {
             c.length >= 8 ? Number(`0x${c.slice(6, 8)}`) : 255,
         ];
         mat.recycle((pixel, row, col) => {
-            const [R, G, B, A] = pixel;
-            if (A === 255) {
+            const A = pixel[3];
+            if (A === 0) {
                 mat.update(row, col, "R", NR);
                 mat.update(row, col, "G", NG);
                 mat.update(row, col, "B", NB);
@@ -163,14 +170,14 @@ class ImageResolver {
     gray(mat) {
         mat.recycle((pixel, row, col) => {
             const [R, G, B] = pixel;
-            const Gray = ImageResolver.rgbToGray(R, G, B);
+            const Gray = Math.floor(ImageResolver.rgbToGray(R, G, B));
             mat.update(row, col, "R", Gray);
             mat.update(row, col, "G", Gray);
             mat.update(row, col, "B", Gray);
         });
     }
     static rgbToGray(R, G, B) {
-        return Math.round(R * ImageResolver.GRAY_SCALE_RED +
+        return (R * ImageResolver.GRAY_SCALE_RED +
             G * ImageResolver.GRAY_SCALE_GREEN +
             B * ImageResolver.GRAY_SCALE_BLUE);
     }
@@ -217,7 +224,8 @@ class Mat {
     }
     clone() {
         const { data, size: { width, height }, } = this;
-        const imageData = new ImageData(data, height, width);
+        const uin = new Uint8ClampedArray(data);
+        const imageData = new ImageData(uin, width, height);
         return new Mat(imageData);
     }
     delete() {
@@ -284,20 +292,22 @@ class Mat {
     }
     toDataUrl(type, quality = 1) {
         const canvas = document.createElement("canvas");
-        void this.imgshow(canvas);
+        this.imgshow(canvas);
         return canvas.toDataURL(type ?? "image/png", quality);
     }
     toBlob(type, quality = 1) {
         return new Promise((resolve, reject) => {
             const canvas = document.createElement("canvas");
-            void this.imgshow(canvas);
+            this.imgshow(canvas);
             canvas.toBlob((blob) => {
                 if (!blob || !blob.size) {
-                    return reject("error: 转换失败");
+                    return reject(new Error("转换失败：不存在的blob或blob大小为空"));
                 }
                 resolve(blob);
             }, type ?? "image/png", quality);
         });
     }
 }
-window.cv = new ImageResolver();
+// const cv = new ImageResolver();
+// window.cv = new ImageResolver();
+// export { cv };
