@@ -111,7 +111,7 @@ class ImageResolver {
     }
     // f1(i,j)=R(i,j)f2(i,j)=G(i,j)f3(i,j)=B(i,j)
     // Y = 0.2126 R + 0.7152 G + 0.0722 B
-    // 灰度化处理
+    // 图像灰度化处理（加权平均法）
     gray(mat) {
         mat.recycle((pixel, row, col) => {
             const [R, G, B] = pixel;
@@ -119,6 +119,35 @@ class ImageResolver {
             mat.update(row, col, "R", Gray);
             mat.update(row, col, "G", Gray);
             mat.update(row, col, "B", Gray);
+        });
+    }
+    static gray(R, G, B) {
+        return Math.round(R * 0.299 + G * 0.587 + B * 0.114);
+    }
+    // 中值滤波算法，用于去除 椒盐噪点与胡椒噪点
+    medianBlur(mat, size) {
+        if (size % 2 !== 1) {
+            errorlog("size需为奇整数！");
+        }
+        const half = -Math.floor(size / 2);
+        const absHalf = Math.abs(half);
+        mat.recycle((pixel, row, col) => {
+            const Gs = [];
+            for (let i = half; i <= absHalf; i++) {
+                for (let j = half; j <= absHalf; j++) {
+                    const [R, G, B] = mat.at(row + i, col + j);
+                    const Gray = ImageResolver.gray(R, G, B);
+                    Gs.push({ gray: Gray, R, G, B });
+                }
+            }
+            if (!Gs.every((item) => item.gray))
+                return;
+            // 取中位数
+            const { gray, R, G, B } = Gs.sort((a, b) => a.gray - b.gray)[Math.floor(Gs.length / 2)];
+            // const Gray = Math.round(R * 0.299 + G * 0.587 + B * 0.114);
+            mat.update(row, col, "R", Math.floor((gray - 0.114 * B - 0.587 * G) / 0.299));
+            mat.update(row, col, "G", Math.floor((gray - 0.114 * B - 0.299 * R) / 0.587));
+            mat.update(row, col, "B", Math.floor((gray - 0.299 * R - 0.587 * G) / 0.114));
         });
     }
 }
@@ -153,6 +182,16 @@ class Mat {
                 break;
         }
     }
+    getAddress(row, col) {
+        const { channels, cols } = this;
+        // 坐标解析，根据x行y列，计算数据的索引值
+        // 本质为换行查找
+        // 一行的列数 * 所在行数 * 通道数 为走过的行像素数；
+        // 所在列数 * 通道数为 该行走过的列数；
+        // 则 R为所得的索引值 G、B、A那就都有了
+        const R = cols * row * channels + col * channels;
+        return [R, R + 1, R + 2, R + 3];
+    }
     recycle(callback) {
         const { rows, cols } = this;
         for (let row = 0; row < rows; row++) {
@@ -165,9 +204,9 @@ class Mat {
         }
     }
     at(row, col) {
-        const { channels, rows, cols, data } = this;
-        const index = cols * row * channels + col * channels;
-        return [data[index], data[index + 1], data[index + 2], data[index + 3]];
+        const { data } = this;
+        const [R, G, B, A] = this.getAddress(row, col);
+        return [data[R], data[G], data[B], data[A]];
     }
 }
 window.cv = new ImageResolver();
