@@ -41,7 +41,7 @@
 
         console.time("resolve and deal");
         const mat = await window.cv.readAsData(file);
-        cv.medianBlur(mat, 3);
+        cv.gray(mat);
 
         console.timeEnd("resolve and deal");
 
@@ -55,11 +55,9 @@
 
         ctx.putImageData(imageData, 0, 0);
 
-        const blob = dataURLtoBlob(canvas.toDataURL());
-
-        const url = URL.createObjectURL(blob);
-
-        downloadFile(url, file.name);
+        const img = document.createElement("img");
+        img.src = canvas.toDataURL("image/png", 1);
+        document.body.appendChild(img);
 
         inputfile.value = "";
       }

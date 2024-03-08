@@ -323,5 +323,5 @@ class Mat {
     }
 }
 // const cv = new ImageResolver();
-// window.cv = new ImageResolver();
+window.cv = new ImageResolver();
 // export { cv };
