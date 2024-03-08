@@ -198,14 +198,28 @@ class ImageResolver {
                     Gs.push({ gray: Gray, R, G, B });
                 }
             }
-            if (!Gs.every((item) => item.gray))
+            const gsv = Gs.filter((item) => item.gray);
+            if (!gsv.length)
                 return;
-            // 取中位数
-            const { R, G, B } = Gs.sort((a, b) => a.gray - b.gray)[Math.floor(Gs.length / 2)];
-            // 设置中位数灰度的还原色
-            mat.update(row, col, "R", R);
-            mat.update(row, col, "G", G);
-            mat.update(row, col, "B", B);
+            // 奇数中位数
+            gsv.sort((a, b) => a.gray - b.gray);
+            if (gsv.length % 2 === 1) {
+                // 取中位数
+                const { R, G, B } = gsv[Math.floor(Gs.length / 2)];
+                // 设置中位数灰度的还原色
+                mat.update(row, col, "R", R);
+                mat.update(row, col, "G", G);
+                mat.update(row, col, "B", B);
+            }
+            else {
+                const l = gsv.length;
+                // 偶数中位数
+                const { R: R1, G: G1, B: B1 } = gsv[l / 2];
+                const { R: R2, G: G2, B: B2 } = gsv[l / 2 - 1];
+                mat.update(row, col, "R", Math.floor((R1 + R2) / 2));
+                mat.update(row, col, "G", Math.floor((G1 + G2) / 2));
+                mat.update(row, col, "B", Math.floor((B1 + B2) / 2));
+            }
         });
     }
 }
