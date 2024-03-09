@@ -12,7 +12,6 @@
   </body>
   <script>
     const inputfile = document.getElementById("input-file");
-    console.log(window.cv);
 
     function dataURLtoBlob(dataurl) {
       var arr = dataurl.split(","),
@@ -41,7 +40,7 @@
 
         console.time("resolve and deal");
         const mat = await window.cv.readAsData(file);
-        cv.gray(mat);
+        cv.gaussianBlur(mat, 3, 1.5, 1.5);
 
         console.timeEnd("resolve and deal");
 

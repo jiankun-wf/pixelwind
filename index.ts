@@ -14,6 +14,59 @@ class ImageResolver {
   static readonly GRAY_SCALE_GREEN = 0.587;
   static readonly GRAY_SCALE_BLUE = 0.114;
 
+  static rgbToGray(R: R, G: G, B: B) {
+    return (
+      R * ImageResolver.GRAY_SCALE_RED +
+      G * ImageResolver.GRAY_SCALE_GREEN +
+      B * ImageResolver.GRAY_SCALE_BLUE
+    );
+  }
+
+  // 高斯函数代入
+  static gaussianFunction(
+    x: number,
+    y: number,
+    sigmaX: number,
+    sigmaY: number
+  ) {
+    const PI = Math.PI;
+    const normalizationFactor = 1 / (2 * PI * sigmaX * sigmaY);
+    const exponent = -(
+      Math.pow(x, 2) / (2 * Math.pow(sigmaX, 2)) +
+      Math.pow(y, 2) / (2 * Math.pow(sigmaY, 2))
+    );
+    const suffix = Math.exp(exponent);
+    return normalizationFactor * suffix;
+  }
+  // 获取高斯矩阵
+  static calcGaussianKernel(ksize: number, sigmaX: number, sigmaY: number) {
+    const kernel: number[][] = [];
+    const half = Math.floor(ksize / 2);
+    // 生成初始矩阵
+    for (let x = -half; x <= half; x++) {
+      const row = half + x;
+      kernel[row] = [];
+      for (let y = -half; y <= half; y++) {
+        const col = half + y;
+        kernel[row][col] = ImageResolver.gaussianFunction(x - half, y - half, sigmaX, sigmaY);
+      }
+    }
+
+    // 卷积核归一化
+    let sum = 0;
+    for (let x = 0; x < ksize; x++) {
+      for (let y = 0; y < ksize; y++) {
+        sum += kernel[x][y];
+      }
+    }
+    for (let i = 0; i < ksize; i++) {
+      for (let j = 0; j < ksize; j++) {
+        kernel[i][j] /= sum;
+      }
+    }
+    return kernel;
+  }
+
   private resolveWithUrl(
     url: string,
     limitWidth?: number,
@@ -96,7 +149,7 @@ class ImageResolver {
     }
   }
 
-  // 图像的 浅色渐隐/深色渐隐      渐隐比例：0.50
+  // 图像的 浅色擦除/深色擦除      渐隐比例：0.50
   fade(mat: Mat, mode: FadeMode, percent: number) {
     const per = mode === "in" ? 1 - percent : percent;
 
@@ -225,14 +278,6 @@ class ImageResolver {
     });
   }
 
-  static rgbToGray(R: R, G: G, B: B) {
-    return (
-      R * ImageResolver.GRAY_SCALE_RED +
-      G * ImageResolver.GRAY_SCALE_GREEN +
-      B * ImageResolver.GRAY_SCALE_BLUE
-    );
-  }
-
   // 中值模糊（中值滤波），用于去除 椒盐噪点与胡椒噪点
   medianBlur(mat: Mat, size: number) {
     if (size % 2 !== 1) {
@@ -273,6 +318,59 @@ class ImageResolver {
         mat.update(row, col, "G", Math.floor((G1 + G2) / 2));
         mat.update(row, col, "B", Math.floor((B1 + B2) / 2));
       }
+    });
+  }
+
+  // 高斯模糊
+  gaussianBlur(mat: Mat, ksize: number, sigmaX: number = 0, sigmaY = sigmaX) {
+    if (ksize % 2 === 0) {
+      errorlog("size需为奇整数！");
+    }
+    // 如果没有sigma参数，则自动计算signmaX
+    if (!sigmaX || sigmaX === 0) {
+      sigmaX = 0.3 * ((ksize - 1) / 2 - 1) + 0.8;
+    }
+    if (!sigmaY || sigmaY === 0) {
+      sigmaY = sigmaX;
+    }
+
+    const gaussianKernel = ImageResolver.calcGaussianKernel(
+      ksize,
+      sigmaX,
+      sigmaY
+    );
+    if (!gaussianKernel.length) return;
+
+    const half = Math.floor(ksize / 2);
+
+    mat.recycle((_pixel, row, col) => {
+      // 应用高斯权重
+      let NR = 0,
+        NG = 0,
+        NB = 0;
+      for (let kx = -half; kx < half; ++kx) {
+        for (let ky = -half; ky < half; ++ky) {
+          const sx = row + kx, sy = col + ky;
+          const krow = kx + half, kcol = ky + half;
+          
+          const rate = gaussianKernel[krow][kcol];
+
+          let [R, G, B] = mat.at(sx, sy);
+          const [DR, DG, DB] = mat.at(sx - kx, sy - ky);
+
+          R = R ?? DR ?? 0;
+          G = G ?? DG ?? 0;
+          B = B ?? DB ?? 0;
+
+          NR += R * rate;
+          NG += G * rate;
+          NB += B * rate;
+        }
+      }
+
+      mat.update(row, col, "R", Math.round(NR));
+      mat.update(row, col, "G", Math.round(NG));
+      mat.update(row, col, "B", Math.round(NB));
     });
   }
 }
@@ -417,85 +515,3 @@ class Mat {
 // const cv = new ImageResolver();
 // window.cv = new ImageResolver();
 // export { cv };
-
-// 定义一个函数用于计算高斯权重值
-function calculateGaussianKernel(sigma) {
-  let kernelSize = Math.floor(3 * sigma) * 2 + 1;
-  let weights = [];
-  let sum = 0;
-
-  for (
-    let i = -Math.floor(kernelSize / 2);
-    i <= Math.floor(kernelSize / 2);
-    ++i
-  ) {
-    let x = i / sigma;
-    let weight = Math.exp(-(x * x) / 2) / (sigma * Math.sqrt(2 * Math.PI));
-    weights.push(weight);
-    sum += weight;
-  }
-
-  // 归一化权重
-  for (let i = 0; i < weights.length; ++i) {
-    weights[i] /= sum;
-  }
-
-  return { weights, kernelSize };
-}
-
-// 使用Canvas API对图片进行高斯模糊
-function applyGaussianBlurToImage(imageData, radius) {
-  const sigma = radius / 3;
-  const { weights, kernelSize } = calculateGaussianKernel(sigma);
-
-  // 创建新的canvas和context以存储结果
-  let canvas = document.createElement("canvas");
-  canvas.width = imageData.width;
-  canvas.height = imageData.height;
-  let ctx = canvas.getContext("2d");
-  let outputImageData = ctx.createImageData(imageData.width, imageData.height);
-
-  // 遍历每个像素并应用高斯模糊
-  for (let y = 0; y < imageData.height; ++y) {
-    for (let x = 0; x < imageData.width; ++x) {
-      let blurredR = 0,
-        blurredG = 0,
-        blurredB = 0,
-        blurredA = 0;
-
-      // 对于每个邻域像素，应用高斯权重
-      for (let ky = 0; ky < kernelSize; ++ky) {
-        for (let kx = 0; kx < kernelSize; ++kx) {
-          let sourceY = Math.min(
-            Math.max(y + ky - kernelSize / 2, 0),
-            imageData.height - 1
-          );
-          let sourceX = Math.min(
-            Math.max(x + kx - kernelSize / 2, 0),
-            imageData.width - 1
-          );
-          let pixelPos = (sourceY * imageData.width + sourceX) * 4;
-
-          let weight = weights[ky * kernelSize + kx];
-          blurredR += imageData.data[pixelPos] * weight;
-          blurredG += imageData.data[pixelPos + 1] * weight;
-          blurredB += imageData.data[pixelPos + 2] * weight;
-          blurredA += imageData.data[pixelPos + 3] * weight;
-        }
-      }
-
-      // 将模糊后的rgba值写入输出图像数据
-      let outputPos = (y * imageData.width + x) * 4;
-      outputImageData.data[outputPos] = Math.round(blurredR);
-      outputImageData.data[outputPos + 1] = Math.round(blurredG);
-      outputImageData.data[outputPos + 2] = Math.round(blurredB);
-      outputImageData.data[outputPos + 3] = Math.round(blurredA);
-    }
-  }
-
-  // 将模糊后的图像数据绘制到canvas上
-  ctx.putImageData(outputImageData, 0, 0);
-
-  // 可以选择返回canvas或canvas.toDataURL()作为模糊后的图片资源
-  return canvas;
-}

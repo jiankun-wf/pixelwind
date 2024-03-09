@@ -5,6 +5,49 @@ class ImageResolver {
     static GRAY_SCALE_RED = 0.299;
     static GRAY_SCALE_GREEN = 0.587;
     static GRAY_SCALE_BLUE = 0.114;
+    static rgbToGray(R, G, B) {
+        return (R * ImageResolver.GRAY_SCALE_RED +
+            G * ImageResolver.GRAY_SCALE_GREEN +
+            B * ImageResolver.GRAY_SCALE_BLUE);
+    }
+    // 高斯函数代入
+    static gaussianFunction(x, y, sigmaX, sigmaY) {
+        const PI = Math.PI;
+        const normalizationFactor = 1 / (2 * PI * sigmaX * sigmaY);
+        const exponent = -(
+          Math.pow(x, 2) / (2 * Math.pow(sigmaX, 2)) +
+          Math.pow(y, 2) / (2 * Math.pow(sigmaY, 2))
+        );
+        const suffix = Math.exp(exponent);
+        return normalizationFactor * suffix;
+    }
+    // 获取高斯矩阵
+    static calcGaussianKernel(ksize, sigmaX, sigmaY) {
+        const kernel = [];
+        const half = Math.floor(ksize / 2);
+        // 生成初始矩阵
+        for (let x = -half; x <= half; x++) {
+            const row = half + x;
+            kernel[row] = [];
+            for (let y = -half; y <= half; y++) {
+                const col = half + y;
+                kernel[row][col] = ImageResolver.gaussianFunction(x - half, y - half, sigmaX, sigmaY);
+            }
+        }
+        // 卷积核归一化
+        let sum = 0;
+        for (let x = 0; x < ksize; x++) {
+            for (let y = 0; y < ksize; y++) {
+                sum += kernel[x][y];
+            }
+        }
+        for (let i = 0; i < ksize; i++) {
+            for (let j = 0; j < ksize; j++) {
+                kernel[i][j] /= sum;
+            }
+        }
+        return kernel;
+    }
     resolveWithUrl(url, limitWidth, limitHeight) {
         return new Promise((resolve, reject) => {
             const img = new Image(limitWidth ?? undefined, limitHeight ?? undefined);
@@ -62,7 +105,7 @@ class ImageResolver {
             return Promise.reject(e);
         }
     }
-    // 图像的 浅色渐隐/深色渐隐      渐隐比例：0.50
+    // 图像的 浅色擦除/深色擦除      渐隐比例：0.50
     fade(mat, mode, percent) {
         const per = mode === "in" ? 1 - percent : percent;
         const C = per * 255;
@@ -176,11 +219,6 @@ class ImageResolver {
             mat.update(row, col, "B", Gray);
         });
     }
-    static rgbToGray(R, G, B) {
-        return (R * ImageResolver.GRAY_SCALE_RED +
-            G * ImageResolver.GRAY_SCALE_GREEN +
-            B * ImageResolver.GRAY_SCALE_BLUE);
-    }
     // 中值模糊（中值滤波），用于去除 椒盐噪点与胡椒噪点
     medianBlur(mat, size) {
         if (size % 2 !== 1) {
@@ -220,6 +258,50 @@ class ImageResolver {
                 mat.update(row, col, "G", Math.floor((G1 + G2) / 2));
                 mat.update(row, col, "B", Math.floor((B1 + B2) / 2));
             }
+        });
+    }
+    // 高斯模糊
+    gaussianBlur(mat, ksize, sigmaX = 0, sigmaY = sigmaX) {
+        if (ksize % 2 === 0) {
+            errorlog("size需为奇整数！");
+        }
+        // 如果没有sigma参数，则自动计算signmaX
+        if (!sigmaX || sigmaX === 0) {
+            sigmaX = 0.3 * ((ksize - 1) / 2 - 1) + 0.8;
+        }
+        if (!sigmaY || sigmaY === 0) {
+            sigmaY = sigmaX;
+        }
+        const gaussianKernel = ImageResolver.calcGaussianKernel(ksize, sigmaX, sigmaY);
+        if (!gaussianKernel.length)
+            return;
+        const half = Math.floor(ksize / 2);
+        mat.recycle((_pixel, row, col) => {
+            // 应用高斯权重
+            let NR = 0, NG = 0, NB = 0;
+            for (let kx = -half; kx <= half; ++kx) {
+                for (let ky = -half; ky <= half; ++ky) {
+                    
+                    const sx = row + kx, sy = col + ky;
+                    const krow = kx + half, kcol = ky + half;
+                    
+                    const rate = gaussianKernel[krow][kcol];
+
+                    let [R, G, B] = mat.at(sx, sy);
+                    const [DR, DG, DB] = mat.at(sx - kx, sy - ky);
+
+                    R = R ?? DR ?? 0;
+                    G = G ?? DG ?? 0;
+                    B = B ?? DB ?? 0;
+
+                    NR += R * rate;
+                    NG += G * rate;
+                    NB += B * rate;
+                }
+            }
+            mat.update(row, col, "R", Math.round(NR));
+            mat.update(row, col, "G", Math.round(NG));
+            mat.update(row, col, "B", Math.round(NB));
         });
     }
 }
