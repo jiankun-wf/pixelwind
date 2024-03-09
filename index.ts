@@ -417,3 +417,85 @@ class Mat {
 // const cv = new ImageResolver();
 // window.cv = new ImageResolver();
 // export { cv };
+
+// 定义一个函数用于计算高斯权重值
+function calculateGaussianKernel(sigma) {
+  let kernelSize = Math.floor(3 * sigma) * 2 + 1;
+  let weights = [];
+  let sum = 0;
+
+  for (
+    let i = -Math.floor(kernelSize / 2);
+    i <= Math.floor(kernelSize / 2);
+    ++i
+  ) {
+    let x = i / sigma;
+    let weight = Math.exp(-(x * x) / 2) / (sigma * Math.sqrt(2 * Math.PI));
+    weights.push(weight);
+    sum += weight;
+  }
+
+  // 归一化权重
+  for (let i = 0; i < weights.length; ++i) {
+    weights[i] /= sum;
+  }
+
+  return { weights, kernelSize };
+}
+
+// 使用Canvas API对图片进行高斯模糊
+function applyGaussianBlurToImage(imageData, radius) {
+  const sigma = radius / 3;
+  const { weights, kernelSize } = calculateGaussianKernel(sigma);
+
+  // 创建新的canvas和context以存储结果
+  let canvas = document.createElement("canvas");
+  canvas.width = imageData.width;
+  canvas.height = imageData.height;
+  let ctx = canvas.getContext("2d");
+  let outputImageData = ctx.createImageData(imageData.width, imageData.height);
+
+  // 遍历每个像素并应用高斯模糊
+  for (let y = 0; y < imageData.height; ++y) {
+    for (let x = 0; x < imageData.width; ++x) {
+      let blurredR = 0,
+        blurredG = 0,
+        blurredB = 0,
+        blurredA = 0;
+
+      // 对于每个邻域像素，应用高斯权重
+      for (let ky = 0; ky < kernelSize; ++ky) {
+        for (let kx = 0; kx < kernelSize; ++kx) {
+          let sourceY = Math.min(
+            Math.max(y + ky - kernelSize / 2, 0),
+            imageData.height - 1
+          );
+          let sourceX = Math.min(
+            Math.max(x + kx - kernelSize / 2, 0),
+            imageData.width - 1
+          );
+          let pixelPos = (sourceY * imageData.width + sourceX) * 4;
+
+          let weight = weights[ky * kernelSize + kx];
+          blurredR += imageData.data[pixelPos] * weight;
+          blurredG += imageData.data[pixelPos + 1] * weight;
+          blurredB += imageData.data[pixelPos + 2] * weight;
+          blurredA += imageData.data[pixelPos + 3] * weight;
+        }
+      }
+
+      // 将模糊后的rgba值写入输出图像数据
+      let outputPos = (y * imageData.width + x) * 4;
+      outputImageData.data[outputPos] = Math.round(blurredR);
+      outputImageData.data[outputPos + 1] = Math.round(blurredG);
+      outputImageData.data[outputPos + 2] = Math.round(blurredB);
+      outputImageData.data[outputPos + 3] = Math.round(blurredA);
+    }
+  }
+
+  // 将模糊后的图像数据绘制到canvas上
+  ctx.putImageData(outputImageData, 0, 0);
+
+  // 可以选择返回canvas或canvas.toDataURL()作为模糊后的图片资源
+  return canvas;
+}
