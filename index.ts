@@ -283,14 +283,11 @@ class ImageResolver {
     sigmaX: number,
     sigmaY: number
   ) {
-    const PI = Math.PI;
-    const normalizationFactor = 1 / (2 * PI * sigmaX * sigmaY);
-    const exponent = -(
-      Math.pow(x, 2) / (2 * Math.pow(sigmaX, 2)) +
-      Math.pow(y, 2) / (2 * Math.pow(sigmaY, 2))
-    );
-    const suffix = Math.exp(exponent);
-    return normalizationFactor * suffix;
+    const exponentX = -((x * x) / (2 * sigmaX * sigmaX));
+    const exponentY = -((y * y) / (2 * sigmaY * sigmaY));
+    const coefficient = 1 / (2 * Math.PI * sigmaX * sigmaY);
+    const value = coefficient * Math.exp(exponentX + exponentY);
+    return value;
   }
   // 获取高斯矩阵
   static calcGaussianKernel(ksize: number, sigmaX: number, sigmaY: number) {
@@ -346,32 +343,34 @@ class ImageResolver {
       // 应用高斯权重
       let NR = 0,
         NG = 0,
-        NB = 0;
-      for (let kx = -half; kx <= half; ++kx) {
-        for (let ky = -half; ky <= half; ++ky) {
-          const sx = row + kx,
-            sy = col + ky;
-          const krow = kx + half,
-            kcol = ky + half;
+        NB = 0, NA = 0;
+      for (let kx = 0; kx < ksize; kx++) {
+        for (let ky = 0; ky < ksize; ky++) {
+        
+          let offsetX = row + kx - half;
+          let offsetY = col + ky - half;
 
-          const rate = gaussianKernel[krow][kcol];
+          offsetX = Math.max(offsetX, 0);
+          offsetX = Math.min(offsetX, mat.rows - 1);
 
-          let [R, G, B] = mat.at(sx, sy);
-          const [DR, DG, DB] = mat.at(sx - kx, sy - ky);
+          offsetY = Math.max(offsetY, 0);
+          offsetY = Math.min(offsetY, mat.cols - 1);
 
-          R = R ?? DR ?? 0;
-          G = G ?? DG ?? 0;
-          B = B ?? DB ?? 0;
+          const rate = gaussianKernel[kx][ky];
+
+          const [R, G, B, A] = mat.at(offsetX, offsetY);
 
           NR += R * rate;
           NG += G * rate;
           NB += B * rate;
+          NA += A * rate
         }
       }
 
       mat.update(row, col, "R", Math.round(NR));
       mat.update(row, col, "G", Math.round(NG));
       mat.update(row, col, "B", Math.round(NB));
+      mat.update(row, col, "A", Math.round(NA));
     });
   }
 
@@ -543,5 +542,5 @@ class Mat {
 }
 
 // const cv = new ImageResolver();
-// window.cv = new ImageResolver();
+window.cv = new ImageResolver();
 // export { cv };

@@ -26,6 +26,7 @@
         flex: 1;
         text-align: center;
         img {
+          max-width: 100%;
         }
       }
 
@@ -33,6 +34,7 @@
         flex: 1;
         text-align: center;
         img {
+          max-width: 100%;
         }
       }
     </style>
@@ -90,7 +92,9 @@
 
         console.time("resolve and deal");
 
-        cv.gaussianBlur(mat, 3, 0.8);
+        cv.gaussianBlur(mat, 3, 2, 2);
+
+        const canvasEl = document.createElement('canvas');
 
         console.timeEnd("resolve and deal");
 
@@ -100,5 +104,6 @@
         inputfile.value = "";
       }
     });
+
   </script>
 </html>
