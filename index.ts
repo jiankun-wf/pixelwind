@@ -9,54 +9,11 @@ const errorlog = (text: string) => {
   throw Error(text);
 };
 
+
+// 遵循规则 static不爆露
+// 用Function感觉会将一些变量暴漏出去
+
 class ImageResolver {
-  static readonly GRAY_SCALE_RED = 0.299;
-  static readonly GRAY_SCALE_GREEN = 0.587;
-  static readonly GRAY_SCALE_BLUE = 0.114;
-
-  static rgbToGray(R: R, G: G, B: B) {
-    return (
-      R * ImageResolver.GRAY_SCALE_RED +
-      G * ImageResolver.GRAY_SCALE_GREEN +
-      B * ImageResolver.GRAY_SCALE_BLUE
-    );
-  }
-
-  private resolveWithUrl(
-    url: string,
-    limitWidth?: number,
-    limitHeight?: number
-  ): Promise<Mat> {
-    return new Promise((resolve, reject) => {
-      const img = new Image(limitWidth ?? undefined, limitHeight ?? undefined);
-      img.addEventListener("load", () => {
-        const cavans = document.createElement("canvas");
-        cavans.width = img.width;
-        cavans.height = img.height;
-
-        const ctx = cavans.getContext("2d");
-        ctx!.drawImage(img, 0, 0, cavans.width, cavans.height);
-
-        const imageData: ImageData = ctx!.getImageData(
-          0,
-          0,
-          cavans.width,
-          cavans.height
-        );
-
-        resolve(new Mat(imageData));
-        img.remove();
-        cavans.remove();
-      });
-
-      img.addEventListener("error", (...args: any[]) => {
-        reject(args[1]);
-      });
-
-      img.setAttribute("src", url);
-    });
-  }
-
   // client-only
   readAsElement(img: HTMLImageElement) {
     const cavans = document.createElement("canvas");
@@ -79,7 +36,7 @@ class ImageResolver {
     }
 
     try {
-      const mat = await this.resolveWithUrl(url, width, height);
+      const mat = await ImageResolver.resolveWithUrl(url, width, height);
       return Promise.resolve(mat);
     } catch (e) {
       return Promise.reject(e);
@@ -97,7 +54,7 @@ class ImageResolver {
 
     const url = URL.createObjectURL(blob);
     try {
-      const mat = await this.resolveWithUrl(url, width, height);
+      const mat = await ImageResolver.resolveWithUrl(url, width, height);
       return Promise.resolve(mat);
     } catch (e) {
       return Promise.reject(e);
@@ -220,8 +177,6 @@ class ImageResolver {
     });
   }
 
-  // f1(i,j)=R(i,j)f2(i,j)=G(i,j)f3(i,j)=B(i,j)
-  // Y = 0.2126 R + 0.7152 G + 0.0722 B
   // 图像灰度化处理（加权平均法）
   gray(mat: Mat) {
     mat.recycle((pixel, row, col) => {
@@ -233,7 +188,8 @@ class ImageResolver {
     });
   }
 
-  // 中值模糊（中值滤波），用于去除 椒盐噪点与胡椒噪点
+  // 中值滤波（中值滤波），用于去除 椒盐噪点与胡椒噪点
+  // TODO 中位数计算 不要用Gray值，要RGB全计算。
   medianBlur(mat: Mat, size: number) {
     if (size % 2 !== 1) {
       errorlog("size需为奇整数！");
@@ -273,6 +229,199 @@ class ImageResolver {
         mat.update(row, col, "G", Math.floor((G1 + G2) / 2));
         mat.update(row, col, "B", Math.floor((B1 + B2) / 2));
       }
+    });
+  }
+
+  // 高斯滤波
+  gaussianBlur(mat: Mat, ksize: number, sigmaX: number = 0, sigmaY = sigmaX) {
+    if (ksize % 2 === 0) {
+      errorlog("size需为奇整数！");
+    }
+    // 如果没有sigma参数，则自动计算signmaX
+    if (!sigmaX || sigmaX === 0) {
+      sigmaX = 0.3 * ((ksize - 1) / 2 - 1) + 0.8;
+    }
+    if (!sigmaY || sigmaY === 0) {
+      sigmaY = sigmaX;
+    }
+
+    const gaussianKernel = ImageResolver.calcGaussianKernel(
+      ksize,
+      sigmaX,
+      sigmaY
+    );
+    if (!gaussianKernel.length) return;
+
+    const half = Math.floor(ksize / 2);
+
+    mat.recycle((_pixel, row, col) => {
+      // 应用高斯权重
+      let NR = 0,
+        NG = 0,
+        NB = 0,
+        NA = 0;
+      for (let kx = 0; kx < ksize; kx++) {
+        for (let ky = 0; ky < ksize; ky++) {
+          let offsetX = row + kx - half;
+          let offsetY = col + ky - half;
+
+          offsetX = Math.max(offsetX, 0);
+          offsetX = Math.min(offsetX, mat.rows - 1);
+
+          offsetY = Math.max(offsetY, 0);
+          offsetY = Math.min(offsetY, mat.cols - 1);
+
+          const rate = gaussianKernel[kx][ky];
+
+          const [R, G, B, A] = mat.at(offsetX, offsetY);
+
+          NR += R * rate;
+          NG += G * rate;
+          NB += B * rate;
+          NA += A * rate;
+        }
+      }
+
+      mat.update(row, col, "R", Math.round(NR));
+      mat.update(row, col, "G", Math.round(NG));
+      mat.update(row, col, "B", Math.round(NB));
+      mat.update(row, col, "A", Math.round(NA));
+    });
+  }
+  // 均值滤波
+  meanBlur(mat: Mat, ksize: number, boderType = 1) {
+
+  }
+
+  // 线性对比度增强参数
+  static readonly LINER_CONTRAST = 1.5;
+  // 亮度固定增强参数
+  static readonly BRIGHTNESS_CONTRAST = 50;
+  // 饱和度增强参数
+  static readonly SATURATION_CONTRAST = 2;
+  // LUT算法（色彩增强）
+  LUT(mat: Mat, lutTable?: Uint8ClampedArray) {
+    if (arguments.length === 1 || !lutTable?.length) {
+      // 生成固定鲜艳规则
+      lutTable = new Uint8ClampedArray(256);
+
+      for (let i = 0; i < 256; i++) {
+        lutTable[i] = Math.min(
+          255,
+          Math.floor(i * ImageResolver.SATURATION_CONTRAST)
+        );
+      }
+    }
+
+    mat.recycle((pixel, row, col) => {
+      const [R, G, B] = pixel;
+
+      mat.update(row, col, "R", lutTable[R]);
+      mat.update(row, col, "G", lutTable[G]);
+      mat.update(row, col, "B", lutTable[B]);
+    });
+  }
+
+  // 二值化处理，
+  // 参数 1. 灰度值 2. 阈值 3. 最大值 4. 二值化类型
+  threshold(
+    mat: Mat,
+    threshold: number,
+    maxValue: number,
+    type: 1 | 2 | 3 | 4 | 5 = ImageResolver.THRESH_BINARY,
+    mode: 1 | 2 | 3 = ImageResolver.THRESH_MODE_THRESHOLD
+  ) {
+    mat.recycle((_pixel, row, col) => {
+      const [R, G, B] = mat.at(row, col);
+
+      const gray = ImageResolver.rgbToGray(R, G, B);  // 计算算像素灰度值
+
+      let newValue;
+
+      switch (mode) {
+        // 固定阈值模式
+        case ImageResolver.THRESH_MODE_THRESHOLD:
+          newValue = ImageResolver.calcThresholdValue(
+            gray,
+            threshold,
+            maxValue,
+            type
+          );
+          break;
+        case ImageResolver.THRESH_MODE_OTSU:
+          // Otsu模式
+          newValue = ImageResolver.calcThresholdValue(
+            gray,
+            ImageResolver.calcOtsuThreshold(mat),
+            maxValue,
+            type
+          );
+          break;
+        case ImageResolver.THRESH_MODE_MANUAL:
+          // 手动模式
+          newValue = ImageResolver.calcThresholdValue(
+            gray,
+            threshold,
+            maxValue,
+            type
+          );
+          break;
+      }
+
+      mat.update(row, col, "R", newValue);
+      mat.update(row, col, "G", newValue);
+      mat.update(row, col, "B", newValue);
+    });
+  }
+
+  // 加权平均法 红色通道（R）因子
+  static readonly GRAY_SCALE_RED = 0.2989;
+  // 加权平均法 绿色通道（G）因子
+  static readonly GRAY_SCALE_GREEN = 0.5870;
+  // 加权平均法 蓝色通道（B）因子
+  static readonly GRAY_SCALE_BLUE = 0.1140;
+  // 加权平均法，计算结果
+  // 遵循国际公式：Y = 0.299 R + 0.587 G + 0.114 B
+  static rgbToGray(R: R, G: G, B: B) {
+    return (
+      R * ImageResolver.GRAY_SCALE_RED +
+      G * ImageResolver.GRAY_SCALE_GREEN +
+      B * ImageResolver.GRAY_SCALE_BLUE
+    );
+  }
+  // 用于解析url图片
+  static resolveWithUrl(
+    url: string,
+    limitWidth?: number,
+    limitHeight?: number
+  ): Promise<Mat> {
+    return new Promise((resolve, reject) => {
+      const img = new Image(limitWidth ?? undefined, limitHeight ?? undefined);
+      img.addEventListener("load", () => {
+        const cavans = document.createElement("canvas");
+        cavans.width = img.width;
+        cavans.height = img.height;
+
+        const ctx = cavans.getContext("2d");
+        ctx!.drawImage(img, 0, 0, cavans.width, cavans.height);
+
+        const imageData: ImageData = ctx!.getImageData(
+          0,
+          0,
+          cavans.width,
+          cavans.height
+        );
+
+        resolve(new Mat(imageData));
+        img.remove();
+        cavans.remove();
+      });
+
+      img.addEventListener("error", (...args: any[]) => {
+        reject(args[1]);
+      });
+
+      img.setAttribute("src", url);
     });
   }
 
@@ -317,93 +466,107 @@ class ImageResolver {
     }
     return kernel;
   }
-  // 高斯模糊
-  gaussianBlur(mat: Mat, ksize: number, sigmaX: number = 0, sigmaY = sigmaX) {
-    if (ksize % 2 === 0) {
-      errorlog("size需为奇整数！");
+
+    // 二值化类型
+  // 只有大于阈值的像素灰度值值为最大值，其他像素灰度值值为最小值。
+  static readonly THRESH_BINARY: 1 = 1;
+  // 与 1相反
+  static readonly THRESH_BINARY_INV: 2 = 2;
+  // 截断阈值处理，大于阈值的像素灰度值被赋值为阈值，小于阈值的像素灰度值保持原值不变。
+  static readonly THRESH_TRUNC: 3 = 3;
+  // 置零阈值处理，只有大于阈值的像素灰度值被置为0，其他像素灰度值保持原值不变。
+  static readonly THRESH_TOZERO: 4 = 4;
+  // 反置零阈值处理，只有小于阈值的像素灰度值被置为0，其他像素灰度值保持原值不变。
+  static readonly THRESH_TOZERO_INV = 5;
+  // 二值化模式  表示阈值处理后，如何处理大于阈值的像素值。
+  // 表示直接使用阈值处理。
+  static readonly THRESH_MODE_THRESHOLD: 1 = 1;
+  // 表示使用Otsu's二值化方法进行阈值处理。
+  static readonly THRESH_MODE_OTSU: 2 = 2;
+  // 表示使用手动指定的阈值进行阈值处理
+  static readonly THRESH_MODE_MANUAL: 3 = 3;
+
+  //根据二值化类型，计算阈值
+  // 参数 1. 灰度值 2. 阈值 3. 最大值 4. 二值化类型
+  static calcThresholdValue(
+    value: number,
+    threshold: number,
+    maxValue: number,
+    type: 1 | 2 | 3 | 4 | 5
+  ) {
+    let newValue: number;
+    switch (type) {
+      case ImageResolver.THRESH_BINARY:
+        // THRESH_BINARY
+        newValue = value < threshold ? 0 : maxValue;
+        break;
+      case ImageResolver.THRESH_BINARY_INV:
+        // THRESH_BINARY_INV
+        newValue = value < threshold ? maxValue : 0;
+        break;
+      case ImageResolver.THRESH_TRUNC:
+        // THRESH_TRUNC
+        newValue = value < threshold ? value : threshold;
+        break;
+      case ImageResolver.THRESH_TOZERO:
+        // THRESH_TOZERO
+        newValue = value < threshold ? 0 : value;
+        break;
+      case ImageResolver.THRESH_TOZERO_INV:
+        // THRESH_TOZERO_INV
+        newValue = value < threshold ? value : 0;
+        break;
     }
-    // 如果没有sigma参数，则自动计算signmaX
-    if (!sigmaX || sigmaX === 0) {
-      sigmaX = 0.3 * ((ksize - 1) / 2 - 1) + 0.8;
-    }
-    if (!sigmaY || sigmaY === 0) {
-      sigmaY = sigmaX;
-    }
-
-    const gaussianKernel = ImageResolver.calcGaussianKernel(
-      ksize,
-      sigmaX,
-      sigmaY
-    );
-    if (!gaussianKernel.length) return;
-
-    const half = Math.floor(ksize / 2);
-
-    mat.recycle((_pixel, row, col) => {
-      // 应用高斯权重
-      let NR = 0,
-        NG = 0,
-        NB = 0, NA = 0;
-      for (let kx = 0; kx < ksize; kx++) {
-        for (let ky = 0; ky < ksize; ky++) {
-        
-          let offsetX = row + kx - half;
-          let offsetY = col + ky - half;
-
-          offsetX = Math.max(offsetX, 0);
-          offsetX = Math.min(offsetX, mat.rows - 1);
-
-          offsetY = Math.max(offsetY, 0);
-          offsetY = Math.min(offsetY, mat.cols - 1);
-
-          const rate = gaussianKernel[kx][ky];
-
-          const [R, G, B, A] = mat.at(offsetX, offsetY);
-
-          NR += R * rate;
-          NG += G * rate;
-          NB += B * rate;
-          NA += A * rate
-        }
-      }
-
-      mat.update(row, col, "R", Math.round(NR));
-      mat.update(row, col, "G", Math.round(NG));
-      mat.update(row, col, "B", Math.round(NB));
-      mat.update(row, col, "A", Math.round(NA));
-    });
+    return newValue;
   }
 
-  // 线性对比度增强参数
-  static LINER_CONTRAST = 1.5;
-  // 亮度固定增强参数
-  static BRIGHTNESS_CONTRAST = 50;
-  // 饱和度增强参数
-  static SATURATION_CONTRAST = 2;
-  // LUT算法（色彩增强）
-  LUT(mat: Mat, lutTable?: Uint8ClampedArray) {
-    if (arguments.length === 1 || !lutTable?.length) {
-      // 生成固定鲜艳规则
-      lutTable = new Uint8ClampedArray(256);
-
-      for (let i = 0; i < 256; i++) {
-        lutTable[i] = Math.min(
-          255,
-          Math.floor(i * ImageResolver.SATURATION_CONTRAST)
-        );
-      }
-    }
+  // 计算 Otsu应用值
+  static calcOtsuThreshold(mat: Mat) {
+    // 计算灰度直方图
+    const histogram = new Array(256).fill(0);
+    let totalPixels = 0;
 
     mat.recycle((pixel, row, col) => {
       const [R, G, B] = pixel;
+      const gray = ImageResolver.rgbToGray(R, G, B);
 
-      mat.update(row, col, "R", lutTable[R]);
-      mat.update(row, col, "G", lutTable[G]);
-      mat.update(row, col, "B", lutTable[B]);
+      histogram[Math.floor(gray)]++;
+      totalPixels++;
     });
+
+    // 归一化直方图
+    let normalizedHistogram = histogram.map((count) => count / totalPixels);
+
+    // 计算类间方差，以找到最佳阈值
+    let bestThreshold = 0;
+    let maxVariance = 0;
+    for (let threshold = 0; threshold < 256; threshold++) {
+      let w0 = normalizedHistogram
+        .slice(0, threshold + 1)
+        .reduce((a, b) => a + b, 0);
+      let w1 = 1 - w0;
+
+      let u0 = normalizedHistogram
+        .slice(0, threshold + 1)
+        .map((p, i) => i * p)
+        .reduce((a, b) => a + b, 0);
+      let u1 = normalizedHistogram
+        .slice(threshold + 1)
+        .map((p, i) => i * p)
+        .reduce((a, b) => a + b, 0);
+
+      let variance = w0 * w1 * Math.pow(u0 / w0 - u1 / w1, 2);
+      if (variance > maxVariance) {
+        maxVariance = variance;
+        bestThreshold = threshold;
+      }
+    }
+
+    return bestThreshold;
   }
 }
 
+// 图像数据类，不爆露
 class Mat {
   rows: number;
   cols: number;
