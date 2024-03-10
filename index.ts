@@ -22,51 +22,6 @@ class ImageResolver {
     );
   }
 
-  // 高斯函数代入
-  static gaussianFunction(
-    x: number,
-    y: number,
-    sigmaX: number,
-    sigmaY: number
-  ) {
-    const PI = Math.PI;
-    const normalizationFactor = 1 / (2 * PI * sigmaX * sigmaY);
-    const exponent = -(
-      Math.pow(x, 2) / (2 * Math.pow(sigmaX, 2)) +
-      Math.pow(y, 2) / (2 * Math.pow(sigmaY, 2))
-    );
-    const suffix = Math.exp(exponent);
-    return normalizationFactor * suffix;
-  }
-  // 获取高斯矩阵
-  static calcGaussianKernel(ksize: number, sigmaX: number, sigmaY: number) {
-    const kernel: number[][] = [];
-    const half = Math.floor(ksize / 2);
-    // 生成初始矩阵
-    for (let x = -half; x <= half; x++) {
-      const row = half + x;
-      kernel[row] = [];
-      for (let y = -half; y <= half; y++) {
-        const col = half + y;
-        kernel[row][col] = ImageResolver.gaussianFunction(x - half, y - half, sigmaX, sigmaY);
-      }
-    }
-
-    // 卷积核归一化
-    let sum = 0;
-    for (let x = 0; x < ksize; x++) {
-      for (let y = 0; y < ksize; y++) {
-        sum += kernel[x][y];
-      }
-    }
-    for (let i = 0; i < ksize; i++) {
-      for (let j = 0; j < ksize; j++) {
-        kernel[i][j] /= sum;
-      }
-    }
-    return kernel;
-  }
-
   private resolveWithUrl(
     url: string,
     limitWidth?: number,
@@ -321,6 +276,50 @@ class ImageResolver {
     });
   }
 
+  // 高斯函数代入
+  static gaussianFunction(
+    x: number,
+    y: number,
+    sigmaX: number,
+    sigmaY: number
+  ) {
+    const PI = Math.PI;
+    const normalizationFactor = 1 / (2 * PI * sigmaX * sigmaY);
+    const exponent = -(
+      Math.pow(x, 2) / (2 * Math.pow(sigmaX, 2)) +
+      Math.pow(y, 2) / (2 * Math.pow(sigmaY, 2))
+    );
+    const suffix = Math.exp(exponent);
+    return normalizationFactor * suffix;
+  }
+  // 获取高斯矩阵
+  static calcGaussianKernel(ksize: number, sigmaX: number, sigmaY: number) {
+    const kernel: number[][] = [];
+    const half = Math.floor(ksize / 2);
+    // 生成初始矩阵
+    for (let x = -half; x <= half; x++) {
+      const row = half + x;
+      kernel[row] = [];
+      for (let y = -half; y <= half; y++) {
+        const col = half + y;
+        kernel[row][col] = ImageResolver.gaussianFunction(x, y, sigmaX, sigmaY);
+      }
+    }
+
+    // 卷积核归一化
+    let sum = 0;
+    for (let x = 0; x < ksize; x++) {
+      for (let y = 0; y < ksize; y++) {
+        sum += kernel[x][y];
+      }
+    }
+    for (let i = 0; i < ksize; i++) {
+      for (let j = 0; j < ksize; j++) {
+        kernel[i][j] /= sum;
+      }
+    }
+    return kernel;
+  }
   // 高斯模糊
   gaussianBlur(mat: Mat, ksize: number, sigmaX: number = 0, sigmaY = sigmaX) {
     if (ksize % 2 === 0) {
@@ -348,11 +347,13 @@ class ImageResolver {
       let NR = 0,
         NG = 0,
         NB = 0;
-      for (let kx = -half; kx < half; ++kx) {
-        for (let ky = -half; ky < half; ++ky) {
-          const sx = row + kx, sy = col + ky;
-          const krow = kx + half, kcol = ky + half;
-          
+      for (let kx = -half; kx <= half; ++kx) {
+        for (let ky = -half; ky <= half; ++ky) {
+          const sx = row + kx,
+            sy = col + ky;
+          const krow = kx + half,
+            kcol = ky + half;
+
           const rate = gaussianKernel[krow][kcol];
 
           let [R, G, B] = mat.at(sx, sy);
@@ -371,6 +372,35 @@ class ImageResolver {
       mat.update(row, col, "R", Math.round(NR));
       mat.update(row, col, "G", Math.round(NG));
       mat.update(row, col, "B", Math.round(NB));
+    });
+  }
+
+  // 线性对比度增强参数
+  static LINER_CONTRAST = 1.5;
+  // 亮度固定增强参数
+  static BRIGHTNESS_CONTRAST = 50;
+  // 饱和度增强参数
+  static SATURATION_CONTRAST = 2;
+  // LUT算法（色彩增强）
+  LUT(mat: Mat, lutTable?: Uint8ClampedArray) {
+    if (arguments.length === 1 || !lutTable?.length) {
+      // 生成固定鲜艳规则
+      lutTable = new Uint8ClampedArray(256);
+
+      for (let i = 0; i < 256; i++) {
+        lutTable[i] = Math.min(
+          255,
+          Math.floor(i * ImageResolver.SATURATION_CONTRAST)
+        );
+      }
+    }
+
+    mat.recycle((pixel, row, col) => {
+      const [R, G, B] = pixel;
+
+      mat.update(row, col, "R", lutTable[R]);
+      mat.update(row, col, "G", lutTable[G]);
+      mat.update(row, col, "B", lutTable[B]);
     });
   }
 }
