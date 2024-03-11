@@ -39,8 +39,8 @@
 
 ### node 环境中：
 
-`const cv = new ImageResolver()`;
-`export { cv }`;
+`const cv = new ImageResolver()`;<br>
+`export { cv }`;<br>
 
 #### 或
 
@@ -52,19 +52,19 @@
 
 ## 读取图像
 
-`const mat = cv.readAsDataUrl(url)`
-`const mat = cv.readAsBlob(blob)`
-`const mat = cv.readAsElement(imgElement)`
+`const mat = cv.readAsDataUrl(url)`<br>
+`const mat = cv.readAsBlob(blob)`<br>
+`const mat = cv.readAsElement(imgElement)`<br>
 
 ## 操作图像
 
 `cv.gray(mat)`
-`cv.fade(mat, 'in', 0.65)`
-`cv.native(mat, '#000000')`
-`cv.nativeRollback(mat)`
+`cv.fade(mat, 'in', 0.65)` <br>
+`cv.native(mat, '#000000')`<br>
+`cv.nativeRollback(mat)`<br>
 
 ## 展示或生成图像
 
-`mat.toBlob(imageType, quality) // 生成blob，会返回Promise`
-`mat.toDataURL() //生成base64码`
-`mat.imgshow(canvasId, clip = true, clipWidth = 700, clipHeight = 400) // 在 700 * 400 的画布上完全展示图像`
+`mat.toBlob(imageType, quality) // 生成blob，会返回Promise` <br>
+`mat.toDataURL() //生成base64码`<br>
+`mat.imgshow(canvasId, clip = true, clipWidth = 700, clipHeight = 400) // 在 700 * 400 的画布上完全展示图像`<br>
