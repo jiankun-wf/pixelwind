@@ -651,6 +651,7 @@ class Mat {
     return [data[R], data[G], data[B], data[A]];
   }
 
+  // clip 是否缩放，注意这个缩放不会影响本身mat图片数据，只做展示缩放
   imgshow(
     canvas: HTMLCanvasElement | string,
     clip = false,
