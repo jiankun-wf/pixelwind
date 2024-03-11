@@ -9,7 +9,6 @@ const errorlog = (text: string) => {
   throw Error(text);
 };
 
-
 // 遵循规则 static不爆露
 // 用Function感觉会将一些变量暴漏出去
 
@@ -289,9 +288,7 @@ class ImageResolver {
     });
   }
   // 均值滤波
-  meanBlur(mat: Mat, ksize: number, boderType = 1) {
-
-  }
+  meanBlur(mat: Mat, ksize: number, boderType = 1) {}
 
   // 线性对比度增强参数
   static readonly LINER_CONTRAST = 1.5;
@@ -334,7 +331,7 @@ class ImageResolver {
     mat.recycle((_pixel, row, col) => {
       const [R, G, B] = mat.at(row, col);
 
-      const gray = ImageResolver.rgbToGray(R, G, B);  // 计算算像素灰度值
+      const gray = ImageResolver.rgbToGray(R, G, B); // 计算算像素灰度值
 
       let newValue;
 
@@ -377,9 +374,9 @@ class ImageResolver {
   // 加权平均法 红色通道（R）因子
   static readonly GRAY_SCALE_RED = 0.2989;
   // 加权平均法 绿色通道（G）因子
-  static readonly GRAY_SCALE_GREEN = 0.5870;
+  static readonly GRAY_SCALE_GREEN = 0.587;
   // 加权平均法 蓝色通道（B）因子
-  static readonly GRAY_SCALE_BLUE = 0.1140;
+  static readonly GRAY_SCALE_BLUE = 0.114;
   // 加权平均法，计算结果
   // 遵循国际公式：Y = 0.299 R + 0.587 G + 0.114 B
   static rgbToGray(R: R, G: G, B: B) {
@@ -467,7 +464,7 @@ class ImageResolver {
     return kernel;
   }
 
-    // 二值化类型
+  // 二值化类型
   // 只有大于阈值的像素灰度值值为最大值，其他像素灰度值值为最小值。
   static readonly THRESH_BINARY: 1 = 1;
   // 与 1相反
@@ -654,7 +651,12 @@ class Mat {
     return [data[R], data[G], data[B], data[A]];
   }
 
-  imgshow(canvas: HTMLCanvasElement | string) {
+  imgshow(
+    canvas: HTMLCanvasElement | string,
+    clip = false,
+    clipWidth = 0,
+    clipHeight = 0
+  ) {
     const canvasEl =
       canvas instanceof HTMLCanvasElement
         ? canvas
@@ -662,18 +664,29 @@ class Mat {
     if (!canvasEl) {
       errorlog("无法找到canvas当前元素！");
     }
-
     const { data, size } = this;
     const { width, height } = size;
-
     const imageData = new ImageData(data, width, height);
-
-    canvasEl.width = width;
-    canvasEl.height = height;
 
     const ctx = canvasEl.getContext("2d");
 
-    ctx.putImageData(imageData, 0, 0);
+    if (clip) {
+      canvasEl.width = clipWidth;
+      canvasEl.height = clipHeight;
+      window
+        .createImageBitmap(imageData, {
+          resizeHeight: clipHeight,
+          resizeWidth: clipWidth,
+        })
+        .then((imageBitmap) => {
+          ctx.drawImage(imageBitmap, 0, 0);
+        });
+    } else {
+      canvasEl.width = width;
+      canvasEl.height = height;
+
+      ctx.putImageData(imageData, 0, 0, 0, 0, canvasEl.width, canvasEl.height);
+    }
   }
 
   toDataUrl(type?: string, quality = 1) {
