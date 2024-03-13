@@ -1,6 +1,8 @@
 const errorlog = (text) => {
     throw Error(text);
 };
+// 遵循规则 static不爆露
+// 用Function感觉会将一些变量暴漏出去
 class ImageResolver {
     // client-only
     readAsElement(img) {
@@ -43,12 +45,12 @@ class ImageResolver {
     fade(mat, mode, percent) {
         const per = mode === "in" ? 1 - percent : percent;
         const C = per * 255;
-        const [R, G, B] = [C, C, C];
+        const CR = C, CG = C, CB = C;
         switch (mode) {
             case "in":
                 mat.recycle((pixel, row, col) => {
-                    const [NR, NG, NB] = pixel;
-                    if (NR + NG + NB >= R + G + B) {
+                    const [R, G, B] = pixel;
+                    if (R + G + B >= CR + CG + CB) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
                         mat.update(row, col, "B", 255);
@@ -57,8 +59,8 @@ class ImageResolver {
                 break;
             case "out":
                 mat.recycle((pixel, row, col) => {
-                    const [NR, NG, NB] = pixel;
-                    if (NR + NG + NB <= R + G + B) {
+                    const [R, G, B] = pixel;
+                    if (R + G + B <= CR + CG + CB) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
                         mat.update(row, col, "B", 255);
@@ -152,6 +154,7 @@ class ImageResolver {
         });
     }
     // 中值滤波（中值滤波），用于去除 椒盐噪点与胡椒噪点
+    // TODO 中位数计算 不要用Gray值，要RGB全计算。
     medianBlur(mat, size) {
         if (size % 2 !== 1) {
             errorlog("size需为奇整数！");
@@ -234,14 +237,43 @@ class ImageResolver {
         });
     }
     // 均值滤波
-    meanBlur(mat, ksize, boderType = 1) {
+    // ksize * ksize 矩阵取平均值
+    meanBlur(mat, ksize) {
+        if (ksize % 2 === 0) {
+            errorlog("size需为奇整数！");
+        }
+        const half = Math.floor(ksize / 2);
+        // ksize * ksize 矩阵数
+        const kernelSize = Math.pow(ksize, 2);
+        mat.recycle((_pixel, row, col) => {
+            let NR = 0, NG = 0, NB = 0, NA = 0;
+            for (let kx = 0; kx < ksize; kx++) {
+                for (let ky = 0; ky < ksize; ky++) {
+                    let offsetX = row + kx - half;
+                    let offsetY = col + ky - half;
+                    offsetX = Math.max(offsetX, 0);
+                    offsetX = Math.min(offsetX, mat.rows - 1);
+                    offsetY = Math.max(offsetY, 0);
+                    offsetY = Math.min(offsetY, mat.cols - 1);
+                    const [R, G, B, A] = mat.at(offsetX, offsetY);
+                    NR += R;
+                    NG += G;
+                    NB += B;
+                    NA += A;
+                }
+            }
+            mat.update(row, col, "R", Math.round(NR / kernelSize));
+            mat.update(row, col, "G", Math.round(NG / kernelSize));
+            mat.update(row, col, "B", Math.round(NB / kernelSize));
+            mat.update(row, col, "A", Math.round(NA / kernelSize));
+        });
     }
     // 线性对比度增强参数
     static LINER_CONTRAST = 1.5;
     // 亮度固定增强参数
     static BRIGHTNESS_CONTRAST = 50;
     // 饱和度增强参数
-    static SATURATION_CONTRAST = 2;
+    static SATURATION_CONTRAST = 1.5;
     // LUT算法（色彩增强）
     LUT(mat, lutTable) {
         if (arguments.length === 1 || !lutTable?.length) {
@@ -287,9 +319,9 @@ class ImageResolver {
     // 加权平均法 红色通道（R）因子
     static GRAY_SCALE_RED = 0.2989;
     // 加权平均法 绿色通道（G）因子
-    static GRAY_SCALE_GREEN = 0.5870;
+    static GRAY_SCALE_GREEN = 0.587;
     // 加权平均法 蓝色通道（B）因子
-    static GRAY_SCALE_BLUE = 0.1140;
+    static GRAY_SCALE_BLUE = 0.114;
     // 加权平均法，计算结果
     // 遵循国际公式：Y = 0.299 R + 0.587 G + 0.114 B
     static rgbToGray(R, G, B) {
@@ -437,6 +469,7 @@ class ImageResolver {
         return bestThreshold;
     }
 }
+// 图像数据类，不爆露
 class Mat {
     rows;
     cols;
@@ -459,6 +492,25 @@ class Mat {
     delete() {
         this.data = new Uint8ClampedArray(0);
     }
+    // 更耗时间所以放弃
+    // useMultipleUpdate() {
+    //   const collectList: Array<UpdatePixelParam> = [];
+    //   const collect = (...args: UpdatePixelParam[]) => {
+    //     const al = args.length;
+    //     for (let i = 0; i < al; i++) {
+    //       collectList.push(args[i]);
+    //     }
+    //   };
+    //   const exec = () => {
+    //     const l = collectList.length;
+    //     for (let i = 0; i < l; i++) {
+    //       const [row, col, type, value] = collect[i];
+    //       this.update(row, col, type, value);
+    //     }
+    //     collectList.splice(0, l);
+    //   };
+    //   return { exec: exec.bind.bind(this), collect };
+    // }
     update(row, col, type, value) {
         const { data } = this;
         const [R, G, B, A] = this.getAddress(row, col);
@@ -503,7 +555,8 @@ class Mat {
         const [R, G, B, A] = this.getAddress(row, col);
         return [data[R], data[G], data[B], data[A]];
     }
-    imgshow(canvas) {
+    // clip 是否缩放，注意这个缩放不会影响本身mat图片数据，只做展示缩放
+    imgshow(canvas, clip = false, clipWidth = 0, clipHeight = 0) {
         const canvasEl = canvas instanceof HTMLCanvasElement
             ? canvas
             : document.querySelector(canvas);
@@ -513,10 +566,24 @@ class Mat {
         const { data, size } = this;
         const { width, height } = size;
         const imageData = new ImageData(data, width, height);
-        canvasEl.width = width;
-        canvasEl.height = height;
         const ctx = canvasEl.getContext("2d");
-        ctx.putImageData(imageData, 0, 0);
+        if (clip) {
+            canvasEl.width = clipWidth;
+            canvasEl.height = clipHeight;
+            window
+                .createImageBitmap(imageData, {
+                resizeHeight: clipHeight,
+                resizeWidth: clipWidth,
+            })
+                .then((imageBitmap) => {
+                ctx.drawImage(imageBitmap, 0, 0);
+            });
+        }
+        else {
+            canvasEl.width = width;
+            canvasEl.height = height;
+            ctx.putImageData(imageData, 0, 0, 0, 0, canvasEl.width, canvasEl.height);
+        }
     }
     toDataUrl(type, quality = 1) {
         const canvas = document.createElement("canvas");

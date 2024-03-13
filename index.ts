@@ -5,6 +5,13 @@ type B = number;
 type A = number;
 type Pixel = [R, G, B, A];
 
+type UpdatePixelParam = [
+  number, // row
+  number, // col
+  "R" | "G" | "B" | "A", // 这个像素的通道
+  number // value
+];
+
 const errorlog = (text: string) => {
   throw Error(text);
 };
@@ -26,16 +33,13 @@ class ImageResolver {
   }
 
   // base64 或者非跨域url
-  async readAsDataUrl(
-    url: string,
-    { width, height }: { width?: number; height?: number } = {}
-  ) {
+  async readAsDataUrl(url: string) {
     if (!url) {
       errorlog("no url！");
     }
 
     try {
-      const mat = await ImageResolver.resolveWithUrl(url, width, height);
+      const mat = await ImageResolver.resolveWithUrl(url);
       return Promise.resolve(mat);
     } catch (e) {
       return Promise.reject(e);
@@ -43,17 +47,14 @@ class ImageResolver {
   }
 
   // 读取blob 或 file对象
-  async readAsData<T extends Blob = Blob>(
-    blob: T,
-    { width, height }: { width?: number; height?: number } = {}
-  ) {
+  async readAsData<T extends Blob = Blob>(blob: T) {
     if (!blob.size) {
       errorlog("no content blob");
     }
 
     const url = URL.createObjectURL(blob);
     try {
-      const mat = await ImageResolver.resolveWithUrl(url, width, height);
+      const mat = await ImageResolver.resolveWithUrl(url);
       return Promise.resolve(mat);
     } catch (e) {
       return Promise.reject(e);
@@ -65,13 +66,15 @@ class ImageResolver {
     const per = mode === "in" ? 1 - percent : percent;
 
     const C = per * 255;
-    const [R, G, B] = [C, C, C];
+    const CR = C,
+      CG = C,
+      CB = C;
 
     switch (mode) {
       case "in":
         mat.recycle((pixel, row, col) => {
-          const [NR, NG, NB] = pixel;
-          if (NR + NG + NB >= R + G + B) {
+          const [R, G, B] = pixel;
+          if (R + G + B >= CR + CG + CB) {
             mat.update(row, col, "R", 255);
             mat.update(row, col, "G", 255);
             mat.update(row, col, "B", 255);
@@ -80,8 +83,8 @@ class ImageResolver {
         break;
       case "out":
         mat.recycle((pixel, row, col) => {
-          const [NR, NG, NB] = pixel;
-          if (NR + NG + NB <= R + G + B) {
+          const [R, G, B] = pixel;
+          if (R + G + B <= CR + CG + CB) {
             mat.update(row, col, "R", 255);
             mat.update(row, col, "G", 255);
             mat.update(row, col, "B", 255);
@@ -288,14 +291,54 @@ class ImageResolver {
     });
   }
   // 均值滤波
-  meanBlur(mat: Mat, ksize: number, boderType = 1) {}
+  // ksize * ksize 矩阵取平均值
+  meanBlur(mat: Mat, ksize: number) {
+    if (ksize % 2 === 0) {
+      errorlog("size需为奇整数！");
+    }
+    const half = Math.floor(ksize / 2);
+
+    // ksize * ksize 矩阵数
+    const kernelSize = Math.pow(ksize, 2);
+
+    mat.recycle((_pixel, row, col) => {
+      let NR = 0,
+        NG = 0,
+        NB = 0,
+        NA = 0;
+      for (let kx = 0; kx < ksize; kx++) {
+        for (let ky = 0; ky < ksize; ky++) {
+          let offsetX = row + kx - half;
+          let offsetY = col + ky - half;
+
+          offsetX = Math.max(offsetX, 0);
+          offsetX = Math.min(offsetX, mat.rows - 1);
+
+          offsetY = Math.max(offsetY, 0);
+          offsetY = Math.min(offsetY, mat.cols - 1);
+
+          const [R, G, B, A] = mat.at(offsetX, offsetY);
+
+          NR += R;
+          NG += G;
+          NB += B;
+          NA += A;
+        }
+      }
+
+      mat.update(row, col, "R", Math.round(NR / kernelSize));
+      mat.update(row, col, "G", Math.round(NG / kernelSize));
+      mat.update(row, col, "B", Math.round(NB / kernelSize));
+      mat.update(row, col, "A", Math.round(NA / kernelSize));
+    });
+  }
 
   // 线性对比度增强参数
   static readonly LINER_CONTRAST = 1.5;
   // 亮度固定增强参数
   static readonly BRIGHTNESS_CONTRAST = 50;
   // 饱和度增强参数
-  static readonly SATURATION_CONTRAST = 2;
+  static readonly SATURATION_CONTRAST = 1.5;
   // LUT算法（色彩增强）
   LUT(mat: Mat, lutTable?: Uint8ClampedArray) {
     if (arguments.length === 1 || !lutTable?.length) {
@@ -387,13 +430,9 @@ class ImageResolver {
     );
   }
   // 用于解析url图片
-  static resolveWithUrl(
-    url: string,
-    limitWidth?: number,
-    limitHeight?: number
-  ): Promise<Mat> {
+  static resolveWithUrl(url: string): Promise<Mat> {
     return new Promise((resolve, reject) => {
-      const img = new Image(limitWidth ?? undefined, limitHeight ?? undefined);
+      const img = new Image();
       img.addEventListener("load", () => {
         const cavans = document.createElement("canvas");
         cavans.width = img.width;
@@ -439,23 +478,27 @@ class ImageResolver {
   static calcGaussianKernel(ksize: number, sigmaX: number, sigmaY: number) {
     const kernel: number[][] = [];
     const half = Math.floor(ksize / 2);
+
+    // 矩阵和
+    let sum = 0;
     // 生成初始矩阵
     for (let x = -half; x <= half; x++) {
       const row = half + x;
       kernel[row] = [];
       for (let y = -half; y <= half; y++) {
         const col = half + y;
-        kernel[row][col] = ImageResolver.gaussianFunction(x, y, sigmaX, sigmaY);
+        const gaussianFunctionRes = ImageResolver.gaussianFunction(
+          x,
+          y,
+          sigmaX,
+          sigmaY
+        );
+        kernel[row][col] = gaussianFunctionRes;
+        sum += gaussianFunctionRes;
       }
     }
 
-    // 卷积核归一化
-    let sum = 0;
-    for (let x = 0; x < ksize; x++) {
-      for (let y = 0; y < ksize; y++) {
-        sum += kernel[x][y];
-      }
-    }
+    //  归一化处理
     for (let i = 0; i < ksize; i++) {
       for (let j = 0; j < ksize; j++) {
         kernel[i][j] /= sum;
@@ -595,6 +638,31 @@ class Mat {
   delete() {
     this.data = new Uint8ClampedArray(0);
   }
+
+  // 更耗时间所以放弃
+  // useMultipleUpdate() {
+  //   const collectList: Array<UpdatePixelParam> = [];
+
+  //   const collect = (...args: UpdatePixelParam[]) => {
+  //     const al = args.length;
+  //     for (let i = 0; i < al; i++) {
+  //       collectList.push(args[i]);
+  //     }
+  //   };
+
+  //   const exec = () => {
+  //     const l = collectList.length;
+
+  //     for (let i = 0; i < l; i++) {
+  //       const [row, col, type, value] = collect[i];
+  //       this.update(row, col, type, value);
+  //     }
+
+  //     collectList.splice(0, l);
+  //   };
+
+  //   return { exec: exec.bind.bind(this), collect };
+  // }
 
   update(row, col, type: "R" | "G" | "B" | "A", value: number) {
     const { data } = this;

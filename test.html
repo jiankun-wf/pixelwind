@@ -46,11 +46,11 @@
     <div class="diff-content">
       <div class="original">
         <div class="diff-title">原图像</div>
-        <img id="original" style="display: none;" />
+        <img id="original" style="display: none" />
       </div>
       <div class="after-deal">
         <div class="diff-title">转换后图像</div>
-        <img id="after-deal" style="display: none;" />
+        <img id="after-deal" style="display: none" />
       </div>
     </div>
   </body>
@@ -85,25 +85,24 @@
         const file = inputfile.files[0];
 
         const url = URL.createObjectURL(file);
-        originalImage.setAttribute('src', url);
-        originalImage.style.display = 'block'
+        originalImage.setAttribute("src", url);
+        originalImage.style.display = "block";
 
         const mat = await window.cv.readAsDataUrl(url);
 
         console.time("resolve and deal");
 
-        cv.gaussianBlur(mat, 3, 2, 2);
+        cv.meanBlur(mat, 9);
 
-        const canvasEl = document.createElement('canvas');
+        const canvasEl = document.createElement("canvas");
 
         console.timeEnd("resolve and deal");
 
-        afterDealImage.setAttribute('src', mat.toDataUrl());
-        afterDealImage.style.display = 'block'
+        afterDealImage.setAttribute("src", mat.toDataUrl());
+        afterDealImage.style.display = "block";
 
         inputfile.value = "";
       }
     });
-
   </script>
 </html>
