@@ -199,38 +199,59 @@ class ImageResolver {
     const half = -Math.floor(size / 2);
     const absHalf = Math.abs(half);
     mat.recycle((_pixel, row, col) => {
-      const Gs: { gray: number; R: number; G: number; B: number }[] = [];
+      const gsv: { R: number[]; G: number[]; B: number[]; A: number[] } = {
+        R: [],
+        G: [],
+        B: [],
+        // A: [],
+      };
       // size * size 的像素矩阵
       for (let i = half; i <= absHalf; i++) {
+        let offsetX = row + i;
+        if (offsetX < 0 || offsetX >= mat.rows) continue;
         for (let j = half; j <= absHalf; j++) {
-          const [R, G, B] = mat.at(row + i, col + j);
+          let offsetY = col + j;
+          if (offsetY < 0 || offsetY >= mat.cols) continue;
 
-          const Gray = ImageResolver.rgbToGray(R, G, B);
-
-          Gs.push({ gray: Gray, R, G, B });
+          const [R, G, B, A] = mat.at(offsetX, offsetY);
+          gsv.R.push(R);
+          gsv.G.push(G);
+          gsv.B.push(B);
+          // gsv.A.push(A);
         }
       }
-      const gsv = Gs.filter((item) => item.gray);
-      if (!gsv.length) return;
+      gsv.R.sort((a, b) => a - b);
+      gsv.G.sort((a, b) => a - b);
+      gsv.B.sort((a, b) => a - b);
+      // gsv.A.sort((a, b) => a - b);
+      const isOdd = gsv.R.length % 2 !== 0; // 奇数
+      let NR, NG, NB;
+      // NA;
       // 奇数中位数
-      gsv.sort((a, b) => a.gray - b.gray);
-      if (gsv.length % 2 === 1) {
+      if (isOdd) {
         // 取中位数
-        const { R, G, B } = gsv[Math.floor(Gs.length / 2)];
-        // 设置中位数灰度的还原色
-        mat.update(row, col, "R", R);
-        mat.update(row, col, "G", G);
-        mat.update(row, col, "B", B);
+        const { R, G, B, A } = gsv;
+        const index = Math.floor(R.length / 2);
+        NR = R[index];
+        NG = G[index];
+        NB = B[index];
+        // NA = A[index];
       } else {
-        const l = gsv.length;
         // 偶数中位数
-        const { R: R1, G: G1, B: B1 } = gsv[l / 2];
-        const { R: R2, G: G2, B: B2 } = gsv[l / 2 - 1];
-
-        mat.update(row, col, "R", Math.floor((R1 + R2) / 2));
-        mat.update(row, col, "G", Math.floor((G1 + G2) / 2));
-        mat.update(row, col, "B", Math.floor((B1 + B2) / 2));
+        const { R, G, B, A } = gsv;
+        const index = R.length / 2;
+        const indexPre = index - 1;
+        NR = Math.round((R[index] + R[indexPre]) / 2);
+        NG = Math.round((G[index] + G[indexPre]) / 2);
+        NB = Math.round((B[index] + B[indexPre]) / 2);
+        // NA = Math.round((A[index] + A[indexPre]) / 2);
       }
+
+      // 设置中位数灰度的还原色
+      mat.update(row, col, "R", NR);
+      mat.update(row, col, "G", NG);
+      mat.update(row, col, "B", NB);
+      // mat.update(row, col, "A", NA);
     });
   }
 
@@ -787,5 +808,5 @@ class Mat {
 }
 
 // const cv = new ImageResolver();
-window.cv = new ImageResolver();
+window.pw = new ImageResolver();
 // export { cv };

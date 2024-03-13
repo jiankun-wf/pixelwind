@@ -15,12 +15,12 @@ class ImageResolver {
         return new Mat(imageData);
     }
     // base64 或者非跨域url
-    async readAsDataUrl(url, { width, height } = {}) {
+    async readAsDataUrl(url) {
         if (!url) {
             errorlog("no url！");
         }
         try {
-            const mat = await ImageResolver.resolveWithUrl(url, width, height);
+            const mat = await ImageResolver.resolveWithUrl(url);
             return Promise.resolve(mat);
         }
         catch (e) {
@@ -28,13 +28,13 @@ class ImageResolver {
         }
     }
     // 读取blob 或 file对象
-    async readAsData(blob, { width, height } = {}) {
+    async readAsData(blob) {
         if (!blob.size) {
             errorlog("no content blob");
         }
         const url = URL.createObjectURL(blob);
         try {
-            const mat = await ImageResolver.resolveWithUrl(url, width, height);
+            const mat = await ImageResolver.resolveWithUrl(url);
             return Promise.resolve(mat);
         }
         catch (e) {
@@ -162,37 +162,60 @@ class ImageResolver {
         const half = -Math.floor(size / 2);
         const absHalf = Math.abs(half);
         mat.recycle((_pixel, row, col) => {
-            const Gs = [];
+            const gsv = {
+                R: [],
+                G: [],
+                B: [],
+                // A: [],
+            };
             // size * size 的像素矩阵
             for (let i = half; i <= absHalf; i++) {
+                let offsetX = row + i;
+                if (offsetX < 0 || offsetX >= mat.rows)
+                    continue;
                 for (let j = half; j <= absHalf; j++) {
-                    const [R, G, B] = mat.at(row + i, col + j);
-                    const Gray = ImageResolver.rgbToGray(R, G, B);
-                    Gs.push({ gray: Gray, R, G, B });
+                    let offsetY = col + j;
+                    if (offsetY < 0 || offsetY >= mat.cols)
+                        continue;
+                    const [R, G, B, A] = mat.at(offsetX, offsetY);
+                    gsv.R.push(R);
+                    gsv.G.push(G);
+                    gsv.B.push(B);
+                    // gsv.A.push(A);
                 }
             }
-            const gsv = Gs.filter((item) => item.gray);
-            if (!gsv.length)
-                return;
+            gsv.R.sort((a, b) => a - b);
+            gsv.G.sort((a, b) => a - b);
+            gsv.B.sort((a, b) => a - b);
+            // gsv.A.sort((a, b) => a - b);
+            const isOdd = gsv.R.length % 2 !== 0; // 奇数
+            let NR, NG, NB;
+            // NA;
             // 奇数中位数
-            gsv.sort((a, b) => a.gray - b.gray);
-            if (gsv.length % 2 === 1) {
+            if (isOdd) {
                 // 取中位数
-                const { R, G, B } = gsv[Math.floor(Gs.length / 2)];
-                // 设置中位数灰度的还原色
-                mat.update(row, col, "R", R);
-                mat.update(row, col, "G", G);
-                mat.update(row, col, "B", B);
+                const { R, G, B, A } = gsv;
+                const index = Math.floor(R.length / 2);
+                NR = R[index];
+                NG = G[index];
+                NB = B[index];
+                // NA = A[index];
             }
             else {
-                const l = gsv.length;
                 // 偶数中位数
-                const { R: R1, G: G1, B: B1 } = gsv[l / 2];
-                const { R: R2, G: G2, B: B2 } = gsv[l / 2 - 1];
-                mat.update(row, col, "R", Math.floor((R1 + R2) / 2));
-                mat.update(row, col, "G", Math.floor((G1 + G2) / 2));
-                mat.update(row, col, "B", Math.floor((B1 + B2) / 2));
+                const { R, G, B, A } = gsv;
+                const index = R.length / 2;
+                const indexPre = index - 1;
+                NR = Math.round((R[index] + R[indexPre]) / 2);
+                NG = Math.round((G[index] + G[indexPre]) / 2);
+                NB = Math.round((B[index] + B[indexPre]) / 2);
+                // NA = Math.round((A[index] + A[indexPre]) / 2);
             }
+            // 设置中位数灰度的还原色
+            mat.update(row, col, "R", NR);
+            mat.update(row, col, "G", NG);
+            mat.update(row, col, "B", NB);
+            // mat.update(row, col, "A", NA);
         });
     }
     // 高斯滤波
@@ -330,9 +353,9 @@ class ImageResolver {
             B * ImageResolver.GRAY_SCALE_BLUE);
     }
     // 用于解析url图片
-    static resolveWithUrl(url, limitWidth, limitHeight) {
+    static resolveWithUrl(url) {
         return new Promise((resolve, reject) => {
-            const img = new Image(limitWidth ?? undefined, limitHeight ?? undefined);
+            const img = new Image();
             img.addEventListener("load", () => {
                 const cavans = document.createElement("canvas");
                 cavans.width = img.width;
@@ -362,22 +385,20 @@ class ImageResolver {
     static calcGaussianKernel(ksize, sigmaX, sigmaY) {
         const kernel = [];
         const half = Math.floor(ksize / 2);
+        // 矩阵和
+        let sum = 0;
         // 生成初始矩阵
         for (let x = -half; x <= half; x++) {
             const row = half + x;
             kernel[row] = [];
             for (let y = -half; y <= half; y++) {
                 const col = half + y;
-                kernel[row][col] = ImageResolver.gaussianFunction(x, y, sigmaX, sigmaY);
+                const gaussianFunctionRes = ImageResolver.gaussianFunction(x, y, sigmaX, sigmaY);
+                kernel[row][col] = gaussianFunctionRes;
+                sum += gaussianFunctionRes;
             }
         }
-        // 卷积核归一化
-        let sum = 0;
-        for (let x = 0; x < ksize; x++) {
-            for (let y = 0; y < ksize; y++) {
-                sum += kernel[x][y];
-            }
-        }
+        //  归一化处理
         for (let i = 0; i < ksize; i++) {
             for (let j = 0; j < ksize; j++) {
                 kernel[i][j] /= sum;
@@ -604,5 +625,5 @@ class Mat {
     }
 }
 // const cv = new ImageResolver();
-window.cv = new ImageResolver();
+window.pw = new ImageResolver();
 // export { cv };
