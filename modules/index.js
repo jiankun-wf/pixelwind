@@ -3,7 +3,7 @@ const errorlog = (text) => {
 };
 // 遵循规则 static不爆露
 // 用Function感觉会将一些变量暴漏出去
-class ImageResolver {
+class PixelWind {
     // client-only
     readAsElement(img) {
         const cavans = document.createElement("canvas");
@@ -20,7 +20,7 @@ class ImageResolver {
             errorlog("no url！");
         }
         try {
-            const mat = await ImageResolver.resolveWithUrl(url);
+            const mat = await PixelWind.resolveWithUrl(url);
             return Promise.resolve(mat);
         }
         catch (e) {
@@ -34,7 +34,7 @@ class ImageResolver {
         }
         const url = URL.createObjectURL(blob);
         try {
-            const mat = await ImageResolver.resolveWithUrl(url);
+            const mat = await PixelWind.resolveWithUrl(url);
             return Promise.resolve(mat);
         }
         catch (e) {
@@ -147,7 +147,7 @@ class ImageResolver {
     gray(mat) {
         mat.recycle((pixel, row, col) => {
             const [R, G, B] = pixel;
-            const Gray = Math.floor(ImageResolver.rgbToGray(R, G, B));
+            const Gray = Math.floor(PixelWind.rgbToGray(R, G, B));
             mat.update(row, col, "R", Gray);
             mat.update(row, col, "G", Gray);
             mat.update(row, col, "B", Gray);
@@ -230,7 +230,7 @@ class ImageResolver {
         if (!sigmaY || sigmaY === 0) {
             sigmaY = sigmaX;
         }
-        const gaussianKernel = ImageResolver.calcGaussianKernel(ksize, sigmaX, sigmaY);
+        const gaussianKernel = PixelWind.calcGaussianKernel(ksize, sigmaX, sigmaY);
         if (!gaussianKernel.length)
             return;
         const half = Math.floor(ksize / 2);
@@ -303,7 +303,7 @@ class ImageResolver {
             // 生成固定鲜艳规则
             lutTable = new Uint8ClampedArray(256);
             for (let i = 0; i < 256; i++) {
-                lutTable[i] = Math.min(255, Math.floor(i * ImageResolver.SATURATION_CONTRAST));
+                lutTable[i] = Math.min(255, Math.floor(i * PixelWind.SATURATION_CONTRAST));
             }
         }
         mat.recycle((pixel, row, col) => {
@@ -315,23 +315,23 @@ class ImageResolver {
     }
     // 二值化处理，
     // 参数 1. 灰度值 2. 阈值 3. 最大值 4. 二值化类型
-    threshold(mat, threshold, maxValue, type = ImageResolver.THRESH_BINARY, mode = ImageResolver.THRESH_MODE_THRESHOLD) {
+    threshold(mat, threshold, maxValue, type = PixelWind.THRESH_BINARY, mode = PixelWind.THRESH_MODE_THRESHOLD) {
         mat.recycle((_pixel, row, col) => {
             const [R, G, B] = mat.at(row, col);
-            const gray = ImageResolver.rgbToGray(R, G, B); // 计算算像素灰度值
+            const gray = PixelWind.rgbToGray(R, G, B); // 计算算像素灰度值
             let newValue;
             switch (mode) {
                 // 固定阈值模式
-                case ImageResolver.THRESH_MODE_THRESHOLD:
-                    newValue = ImageResolver.calcThresholdValue(gray, threshold, maxValue, type);
+                case PixelWind.THRESH_MODE_THRESHOLD:
+                    newValue = PixelWind.calcThresholdValue(gray, threshold, maxValue, type);
                     break;
-                case ImageResolver.THRESH_MODE_OTSU:
+                case PixelWind.THRESH_MODE_OTSU:
                     // Otsu模式
-                    newValue = ImageResolver.calcThresholdValue(gray, ImageResolver.calcOtsuThreshold(mat), maxValue, type);
+                    newValue = PixelWind.calcThresholdValue(gray, PixelWind.calcOtsuThreshold(mat), maxValue, type);
                     break;
-                case ImageResolver.THRESH_MODE_MANUAL:
+                case PixelWind.THRESH_MODE_MANUAL:
                     // 手动模式
-                    newValue = ImageResolver.calcThresholdValue(gray, threshold, maxValue, type);
+                    newValue = PixelWind.calcThresholdValue(gray, threshold, maxValue, type);
                     break;
             }
             mat.update(row, col, "R", newValue);
@@ -348,9 +348,9 @@ class ImageResolver {
     // 加权平均法，计算结果
     // 遵循国际公式：Y = 0.299 R + 0.587 G + 0.114 B
     static rgbToGray(R, G, B) {
-        return (R * ImageResolver.GRAY_SCALE_RED +
-            G * ImageResolver.GRAY_SCALE_GREEN +
-            B * ImageResolver.GRAY_SCALE_BLUE);
+        return (R * PixelWind.GRAY_SCALE_RED +
+            G * PixelWind.GRAY_SCALE_GREEN +
+            B * PixelWind.GRAY_SCALE_BLUE);
     }
     // 用于解析url图片
     static resolveWithUrl(url) {
@@ -393,7 +393,7 @@ class ImageResolver {
             kernel[row] = [];
             for (let y = -half; y <= half; y++) {
                 const col = half + y;
-                const gaussianFunctionRes = ImageResolver.gaussianFunction(x, y, sigmaX, sigmaY);
+                const gaussianFunctionRes = PixelWind.gaussianFunction(x, y, sigmaX, sigmaY);
                 kernel[row][col] = gaussianFunctionRes;
                 sum += gaussianFunctionRes;
             }
@@ -429,23 +429,23 @@ class ImageResolver {
     static calcThresholdValue(value, threshold, maxValue, type) {
         let newValue;
         switch (type) {
-            case ImageResolver.THRESH_BINARY:
+            case PixelWind.THRESH_BINARY:
                 // THRESH_BINARY
                 newValue = value < threshold ? 0 : maxValue;
                 break;
-            case ImageResolver.THRESH_BINARY_INV:
+            case PixelWind.THRESH_BINARY_INV:
                 // THRESH_BINARY_INV
                 newValue = value < threshold ? maxValue : 0;
                 break;
-            case ImageResolver.THRESH_TRUNC:
+            case PixelWind.THRESH_TRUNC:
                 // THRESH_TRUNC
                 newValue = value < threshold ? value : threshold;
                 break;
-            case ImageResolver.THRESH_TOZERO:
+            case PixelWind.THRESH_TOZERO:
                 // THRESH_TOZERO
                 newValue = value < threshold ? 0 : value;
                 break;
-            case ImageResolver.THRESH_TOZERO_INV:
+            case PixelWind.THRESH_TOZERO_INV:
                 // THRESH_TOZERO_INV
                 newValue = value < threshold ? value : 0;
                 break;
@@ -459,7 +459,7 @@ class ImageResolver {
         let totalPixels = 0;
         mat.recycle((pixel, row, col) => {
             const [R, G, B] = pixel;
-            const gray = ImageResolver.rgbToGray(R, G, B);
+            const gray = PixelWind.rgbToGray(R, G, B);
             histogram[Math.floor(gray)]++;
             totalPixels++;
         });
@@ -624,6 +624,6 @@ class Mat {
         });
     }
 }
-// const cv = new ImageResolver();
-// window.pw = new ImageResolver();
-// export { cv };
+const pw = new PixelWind();
+// window.pw = new PixelWind();
+export { pw };

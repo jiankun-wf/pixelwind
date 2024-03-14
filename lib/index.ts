@@ -803,6 +803,6 @@ class Mat {
   }
 }
 
-// const cv = new PixelWind();
+const pw = new PixelWind();
 // window.pw = new PixelWind();
-// export { cv };
+export { pw };

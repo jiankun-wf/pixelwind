@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <!-- <script src="./modules/index.js"></script> -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.7.9/vue.min.js"></script>
+    <!-- 引入样式 -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"
+    />
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+    <style>
+      body {
+        background-color: #1d1d20;
+        color: #fff;
+        /* font-family: "Courier New", Courier, monospace; */
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      /* 按钮 */
+      .cu-btn {
+        width: 210px;
+        text-align: center;
+        border-radius: 2px;
+        letter-spacing: 2px;
+        font-size: 18px;
+        cursor: pointer;
+        font-weight: bold;
+        height: 36px;
+        line-height: 35px;
+
+        &.block {
+          width: 100%;
+        }
+
+        &.small {
+          width: 93px;
+        }
+
+        &.white {
+          background-color: #fff;
+          color: #1d1d20;
+        }
+        &.primary {
+          background-color: #0025ff;
+          color: #f3f3f3;
+        }
+      }
+
+      #app {
+        width: 1200px;
+        margin: 0 auto;
+      }
+
+      .upload-row {
+        margin: 24px 0;
+      }
+
+      .result-content {
+        width: 100%;
+        background-image: url(./assets/rect-bg.png);
+        height: 350px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app">
+      <div class="upload-row">
+        <input
+          ref="uploadRef"
+          type="file"
+          accept="image/*"
+          style="display: none"
+        />
+        <div class="cu-btn primary" @click.stop="handleUpload">上传图片</div>
+      </div>
+
+      <div class="result-content"></div>
+    </div>
+
+    <!-- <div class="diff-content">
+      <div class="original">
+        <div class="diff-title">原图像</div>
+        <img id="original" style="display: none" />
+      </div>
+      <div class="after-deal">
+        <div class="diff-title">转换后图像</div>
+        <img id="after-deal" style="display: none" />
+      </div>
+      <div class="after-deal-by-opencv">
+        <div class="diff-title">Opencv转换图像</div>
+        <canvas id="output" />
+      </div>
+    </div> -->
+  </body>
+  <!-- <script>
+    const inputfile = document.getElementById("input-file");
+    const originalImage = document.getElementById("original");
+    const afterDealImage = document.getElementById("after-deal");
+
+    inputfile.addEventListener("change", () => {
+      if (inputfile.files) {
+        const file = inputfile.files[0];
+
+        const url = URL.createObjectURL(file);
+        originalImage.setAttribute("src", url);
+        originalImage.style.display = "block";
+
+        originalImage.onload = async function () {
+          const mat = await window.pw.readAsDataUrl(url);
+          console.time("resolve and deal");
+          window.pw.fade(mat, "out", 0.5);
+          console.timeEnd("resolve and deal");
+          const canvasEl = document.createElement("canvas");
+
+          afterDealImage.setAttribute("src", mat.toDataUrl());
+          afterDealImage.style.display = "block";
+          inputfile.value = "";
+        };
+      }
+    });
+  </script> -->
+  <!-- <script src="./modules/index.js"></script> -->
+  <script type="module">
+    import { pw } from "./modules/index.js";
+    console.log(pw);
+    const app = new window.Vue({
+      el: "#app",
+      data() {
+        return {
+          message: "123",
+        };
+      },
+      methods: {
+        handleUpload() {
+          this.$refs.uploadRef.click();
+        },
+      },
+    });
+  </script>
+</html>
