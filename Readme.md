@@ -35,33 +35,48 @@
 
 # 使用
 
-## 修改 index.ts(js)的后面几行;
+## 本地测试
+
+### 开发环境用 exporess 做了 http 服务器，故不能脱离 node 启动。
+
+`npm install` <br>
+`npm run start` <br>
+
+## 打包应用
+
+### 先打个包，因为只有一个 ts，直接用 tsc 编译为 js
+
+`npm run build`
+
+#### 编译文件在 modules 文件夹下
+
+## 应用到你的项目中，需要加到导出或者 windows 全局变量中;
 
 ### node 环境中：
 
-`const cv = new ImageResolver()`;<br>
-`export { cv }`;<br>
+`const pw = new PixelWind()`;<br>
+`export { pw }`;<br>
 
 #### 或
 
-`exports.cv = cv`;
+`exports.pw = pw`;
 
 ### 浏览器：
 
-`window.cv = new ImageResolver()`
+`window.pw = new ImageResolver()`
 
 ## 读取图像
 
-`const mat = cv.readAsDataUrl(url)`<br>
-`const mat = cv.readAsBlob(blob)`<br>
-`const mat = cv.readAsElement(imgElement)`<br>
+`const mat = pw.readAsDataUrl(url)`<br>
+`const mat = pw.readAsBlob(blob)`<br>
+`const mat = pw.readAsElement(imgElement)`<br>
 
 ## 操作图像
 
-`cv.gray(mat)`
-`cv.fade(mat, 'in', 0.65)` <br>
-`cv.native(mat, '#000000')`<br>
-`cv.nativeRollback(mat)`<br>
+`pw.gray(mat)`
+`pw.fade(mat, 'in', 0.65)` <br>
+`pw.native(mat, '#000000')`<br>
+`pw.nativeRollback(mat)`<br>
 
 ## 展示或生成图像
 

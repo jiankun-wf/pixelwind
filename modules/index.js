@@ -166,7 +166,7 @@ class ImageResolver {
                 R: [],
                 G: [],
                 B: [],
-                // A: [],
+                A: [],
             };
             // size * size 的像素矩阵
             for (let i = half; i <= absHalf; i++) {
@@ -181,15 +181,15 @@ class ImageResolver {
                     gsv.R.push(R);
                     gsv.G.push(G);
                     gsv.B.push(B);
-                    // gsv.A.push(A);
+                    gsv.A.push(A);
                 }
             }
             gsv.R.sort((a, b) => a - b);
             gsv.G.sort((a, b) => a - b);
             gsv.B.sort((a, b) => a - b);
-            // gsv.A.sort((a, b) => a - b);
+            gsv.A.sort((a, b) => a - b);
             const isOdd = gsv.R.length % 2 !== 0; // 奇数
-            let NR, NG, NB;
+            let NR, NG, NB, NA;
             // NA;
             // 奇数中位数
             if (isOdd) {
@@ -199,7 +199,7 @@ class ImageResolver {
                 NR = R[index];
                 NG = G[index];
                 NB = B[index];
-                // NA = A[index];
+                NA = A[index];
             }
             else {
                 // 偶数中位数
@@ -209,7 +209,7 @@ class ImageResolver {
                 NR = Math.round((R[index] + R[indexPre]) / 2);
                 NG = Math.round((G[index] + G[indexPre]) / 2);
                 NB = Math.round((B[index] + B[indexPre]) / 2);
-                // NA = Math.round((A[index] + A[indexPre]) / 2);
+                NA = Math.round((A[index] + A[indexPre]) / 2);
             }
             // 设置中位数灰度的还原色
             mat.update(row, col, "R", NR);
@@ -625,5 +625,5 @@ class Mat {
     }
 }
 // const cv = new ImageResolver();
-window.pw = new ImageResolver();
+// window.pw = new ImageResolver();
 // export { cv };

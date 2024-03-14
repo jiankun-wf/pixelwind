@@ -19,7 +19,7 @@ const errorlog = (text: string) => {
 // 遵循规则 static不爆露
 // 用Function感觉会将一些变量暴漏出去
 
-class ImageResolver {
+class PixelWind {
   // client-only
   readAsElement(img: HTMLImageElement) {
     const cavans = document.createElement("canvas");
@@ -39,7 +39,7 @@ class ImageResolver {
     }
 
     try {
-      const mat = await ImageResolver.resolveWithUrl(url);
+      const mat = await PixelWind.resolveWithUrl(url);
       return Promise.resolve(mat);
     } catch (e) {
       return Promise.reject(e);
@@ -54,7 +54,7 @@ class ImageResolver {
 
     const url = URL.createObjectURL(blob);
     try {
-      const mat = await ImageResolver.resolveWithUrl(url);
+      const mat = await PixelWind.resolveWithUrl(url);
       return Promise.resolve(mat);
     } catch (e) {
       return Promise.reject(e);
@@ -183,7 +183,7 @@ class ImageResolver {
   gray(mat: Mat) {
     mat.recycle((pixel, row, col) => {
       const [R, G, B] = pixel;
-      const Gray = Math.floor(ImageResolver.rgbToGray(R, G, B));
+      const Gray = Math.floor(PixelWind.rgbToGray(R, G, B));
       mat.update(row, col, "R", Gray);
       mat.update(row, col, "G", Gray);
       mat.update(row, col, "B", Gray);
@@ -203,7 +203,7 @@ class ImageResolver {
         R: [],
         G: [],
         B: [],
-        // A: [],
+        A: [],
       };
       // size * size 的像素矩阵
       for (let i = half; i <= absHalf; i++) {
@@ -217,15 +217,15 @@ class ImageResolver {
           gsv.R.push(R);
           gsv.G.push(G);
           gsv.B.push(B);
-          // gsv.A.push(A);
+          gsv.A.push(A);
         }
       }
       gsv.R.sort((a, b) => a - b);
       gsv.G.sort((a, b) => a - b);
       gsv.B.sort((a, b) => a - b);
-      // gsv.A.sort((a, b) => a - b);
+      gsv.A.sort((a, b) => a - b);
       const isOdd = gsv.R.length % 2 !== 0; // 奇数
-      let NR, NG, NB;
+      let NR, NG, NB, NA;
       // NA;
       // 奇数中位数
       if (isOdd) {
@@ -235,7 +235,7 @@ class ImageResolver {
         NR = R[index];
         NG = G[index];
         NB = B[index];
-        // NA = A[index];
+        NA = A[index];
       } else {
         // 偶数中位数
         const { R, G, B, A } = gsv;
@@ -244,7 +244,7 @@ class ImageResolver {
         NR = Math.round((R[index] + R[indexPre]) / 2);
         NG = Math.round((G[index] + G[indexPre]) / 2);
         NB = Math.round((B[index] + B[indexPre]) / 2);
-        // NA = Math.round((A[index] + A[indexPre]) / 2);
+        NA = Math.round((A[index] + A[indexPre]) / 2);
       }
 
       // 设置中位数灰度的还原色
@@ -268,11 +268,7 @@ class ImageResolver {
       sigmaY = sigmaX;
     }
 
-    const gaussianKernel = ImageResolver.calcGaussianKernel(
-      ksize,
-      sigmaX,
-      sigmaY
-    );
+    const gaussianKernel = PixelWind.calcGaussianKernel(ksize, sigmaX, sigmaY);
     if (!gaussianKernel.length) return;
 
     const half = Math.floor(ksize / 2);
@@ -369,7 +365,7 @@ class ImageResolver {
       for (let i = 0; i < 256; i++) {
         lutTable[i] = Math.min(
           255,
-          Math.floor(i * ImageResolver.SATURATION_CONTRAST)
+          Math.floor(i * PixelWind.SATURATION_CONTRAST)
         );
       }
     }
@@ -389,38 +385,38 @@ class ImageResolver {
     mat: Mat,
     threshold: number,
     maxValue: number,
-    type: 1 | 2 | 3 | 4 | 5 = ImageResolver.THRESH_BINARY,
-    mode: 1 | 2 | 3 = ImageResolver.THRESH_MODE_THRESHOLD
+    type: 1 | 2 | 3 | 4 | 5 = PixelWind.THRESH_BINARY,
+    mode: 1 | 2 | 3 = PixelWind.THRESH_MODE_THRESHOLD
   ) {
     mat.recycle((_pixel, row, col) => {
       const [R, G, B] = mat.at(row, col);
 
-      const gray = ImageResolver.rgbToGray(R, G, B); // 计算算像素灰度值
+      const gray = PixelWind.rgbToGray(R, G, B); // 计算算像素灰度值
 
       let newValue;
 
       switch (mode) {
         // 固定阈值模式
-        case ImageResolver.THRESH_MODE_THRESHOLD:
-          newValue = ImageResolver.calcThresholdValue(
+        case PixelWind.THRESH_MODE_THRESHOLD:
+          newValue = PixelWind.calcThresholdValue(
             gray,
             threshold,
             maxValue,
             type
           );
           break;
-        case ImageResolver.THRESH_MODE_OTSU:
+        case PixelWind.THRESH_MODE_OTSU:
           // Otsu模式
-          newValue = ImageResolver.calcThresholdValue(
+          newValue = PixelWind.calcThresholdValue(
             gray,
-            ImageResolver.calcOtsuThreshold(mat),
+            PixelWind.calcOtsuThreshold(mat),
             maxValue,
             type
           );
           break;
-        case ImageResolver.THRESH_MODE_MANUAL:
+        case PixelWind.THRESH_MODE_MANUAL:
           // 手动模式
-          newValue = ImageResolver.calcThresholdValue(
+          newValue = PixelWind.calcThresholdValue(
             gray,
             threshold,
             maxValue,
@@ -445,9 +441,9 @@ class ImageResolver {
   // 遵循国际公式：Y = 0.299 R + 0.587 G + 0.114 B
   static rgbToGray(R: R, G: G, B: B) {
     return (
-      R * ImageResolver.GRAY_SCALE_RED +
-      G * ImageResolver.GRAY_SCALE_GREEN +
-      B * ImageResolver.GRAY_SCALE_BLUE
+      R * PixelWind.GRAY_SCALE_RED +
+      G * PixelWind.GRAY_SCALE_GREEN +
+      B * PixelWind.GRAY_SCALE_BLUE
     );
   }
   // 用于解析url图片
@@ -508,7 +504,7 @@ class ImageResolver {
       kernel[row] = [];
       for (let y = -half; y <= half; y++) {
         const col = half + y;
-        const gaussianFunctionRes = ImageResolver.gaussianFunction(
+        const gaussianFunctionRes = PixelWind.gaussianFunction(
           x,
           y,
           sigmaX,
@@ -557,23 +553,23 @@ class ImageResolver {
   ) {
     let newValue: number;
     switch (type) {
-      case ImageResolver.THRESH_BINARY:
+      case PixelWind.THRESH_BINARY:
         // THRESH_BINARY
         newValue = value < threshold ? 0 : maxValue;
         break;
-      case ImageResolver.THRESH_BINARY_INV:
+      case PixelWind.THRESH_BINARY_INV:
         // THRESH_BINARY_INV
         newValue = value < threshold ? maxValue : 0;
         break;
-      case ImageResolver.THRESH_TRUNC:
+      case PixelWind.THRESH_TRUNC:
         // THRESH_TRUNC
         newValue = value < threshold ? value : threshold;
         break;
-      case ImageResolver.THRESH_TOZERO:
+      case PixelWind.THRESH_TOZERO:
         // THRESH_TOZERO
         newValue = value < threshold ? 0 : value;
         break;
-      case ImageResolver.THRESH_TOZERO_INV:
+      case PixelWind.THRESH_TOZERO_INV:
         // THRESH_TOZERO_INV
         newValue = value < threshold ? value : 0;
         break;
@@ -589,7 +585,7 @@ class ImageResolver {
 
     mat.recycle((pixel, row, col) => {
       const [R, G, B] = pixel;
-      const gray = ImageResolver.rgbToGray(R, G, B);
+      const gray = PixelWind.rgbToGray(R, G, B);
 
       histogram[Math.floor(gray)]++;
       totalPixels++;
@@ -807,6 +803,6 @@ class Mat {
   }
 }
 
-// const cv = new ImageResolver();
-window.pw = new ImageResolver();
+// const cv = new PixelWind();
+// window.pw = new PixelWind();
 // export { cv };
