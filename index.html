@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Pixel Wind</title>
     <!-- <script src="./modules/index.js"></script> -->
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.7.9/vue.min.js"></script>
     <!-- 引入样式 -->
@@ -18,7 +18,7 @@
       body {
         background-color: #1d1d20;
         color: #fff;
-        /* font-family: "Courier New", Courier, monospace; */
+        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
         margin: 0;
       }
       * {
@@ -30,7 +30,7 @@
         text-align: center;
         border-radius: 2px;
         letter-spacing: 2px;
-        font-size: 18px;
+        font-size: 15px;
         cursor: pointer;
         font-weight: bold;
         height: 36px;
@@ -66,7 +66,18 @@
       .result-content {
         width: 100%;
         background-image: url(./assets/rect-bg.png);
-        height: 350px;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 24px;
+        padding: 30px 0;
+        position: relative;
+      }
+      .download-btn {
+        position: absolute;
+        top: 0px;
+        right: 0px;
       }
     </style>
   </head>
@@ -78,70 +89,63 @@
           ref="uploadRef"
           type="file"
           accept="image/*"
+          @change="handleResolveFile"
           style="display: none"
         />
         <div class="cu-btn primary" @click.stop="handleUpload">上传图片</div>
       </div>
 
-      <div class="result-content"></div>
+      <div class="result-content">
+        <div class="cu-btn white download-btn small">下载图片</div>
+        <img ref="resultImage" style="display: none" />
+      </div>
     </div>
-
-    <!-- <div class="diff-content">
-      <div class="original">
-        <div class="diff-title">原图像</div>
-        <img id="original" style="display: none" />
-      </div>
-      <div class="after-deal">
-        <div class="diff-title">转换后图像</div>
-        <img id="after-deal" style="display: none" />
-      </div>
-      <div class="after-deal-by-opencv">
-        <div class="diff-title">Opencv转换图像</div>
-        <canvas id="output" />
-      </div>
-    </div> -->
   </body>
-  <!-- <script>
-    const inputfile = document.getElementById("input-file");
-    const originalImage = document.getElementById("original");
-    const afterDealImage = document.getElementById("after-deal");
 
-    inputfile.addEventListener("change", () => {
-      if (inputfile.files) {
-        const file = inputfile.files[0];
-
-        const url = URL.createObjectURL(file);
-        originalImage.setAttribute("src", url);
-        originalImage.style.display = "block";
-
-        originalImage.onload = async function () {
-          const mat = await window.pw.readAsDataUrl(url);
-          console.time("resolve and deal");
-          window.pw.fade(mat, "out", 0.5);
-          console.timeEnd("resolve and deal");
-          const canvasEl = document.createElement("canvas");
-
-          afterDealImage.setAttribute("src", mat.toDataUrl());
-          afterDealImage.style.display = "block";
-          inputfile.value = "";
-        };
-      }
-    });
-  </script> -->
-  <!-- <script src="./modules/index.js"></script> -->
   <script type="module">
     import { pw } from "./modules/index.js";
-    console.log(pw);
+
     const app = new window.Vue({
       el: "#app",
       data() {
         return {
           message: "123",
+          originalMat: null,
+          saveMat: null,
         };
       },
       methods: {
         handleUpload() {
           this.$refs.uploadRef.click();
+        },
+        calcResize(width, height) {
+          const config = { width, height };
+          if (width >= 1120) {
+            config.width = 1120;
+            config.height = (1120 / width) * height;
+          }
+
+          return config;
+        },
+        handleShowImg(mat) {
+          mat = mat || this.saveMat;
+          const { width, height } = mat.size;
+          const { width: rw, height: rh } = this.calcResize(width, height);
+          this.$refs.resultImage.width = rw;
+          this.$refs.resultImage.height = rh;
+          this.$refs.resultImage.src = mat.toDataUrl("image/png");
+        },
+        async handleResolveFile(e) {
+          const { target } = e;
+          const file = target.files[0];
+          if (file) {
+            const mat = await pw.readAsData(file);
+            this.originalMat = mat;
+            this.saveMat = mat;
+            this.handleShowImg();
+            this.$refs.resultImage.style.display = "block";
+            target.value = "";
+          }
         },
       },
     });
