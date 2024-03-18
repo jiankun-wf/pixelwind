@@ -1,0 +1,96 @@
+body {
+  background-color: #1d1d20;
+  color: #fff;
+  font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+  margin: 0;
+}
+* {
+  box-sizing: border-box;
+}
+/* 按钮 */
+.cu-btn {
+  width: 210px;
+  text-align: center;
+  border-radius: 2px;
+  letter-spacing: 2px;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: bold;
+  height: 36px;
+  line-height: 35px;
+
+  &.small {
+    width: 93px;
+  }
+
+  &.white {
+    background-color: #fff;
+    color: #1d1d20;
+
+    &.bordered {
+      border: 1px solid #0025ff;
+    }
+  }
+
+  &.primary {
+    background-color: #0025ff;
+    color: #f3f3f3;
+  }
+}
+
+#app {
+  display: flex;
+  margin: 0 24px;
+}
+
+.left-content {
+  margin-top: 24px;
+  width: 412px;
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  max-height: 500px;
+}
+
+.right-content {
+  flex: 1;
+}
+
+.right-content .main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.upload-row {
+  margin: 24px 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.result-content {
+  width: 100%;
+  background-image: url(../rect-bg.png);
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  padding: 30px 0;
+  position: relative;
+}
+
+.switch-slider-content {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.switch-slider-content .fill {
+  margin-left: 18px;
+  flex: 1;
+}
+
+.mutiple-rows {
+  display: flex;
+  flex-direction: row;
+  column-gap: 12px;
+}

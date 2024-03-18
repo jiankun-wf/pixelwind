@@ -1,0 +1,114 @@
+.el-color-picker {
+  width: 100%;
+}
+
+.el-color-picker .el-color-picker__mask {
+  width: 100%;
+}
+
+.el-color-picker .el-color-picker__trigger {
+  height: 32px;
+  width: 60px;
+  border: 1px solid #dedede;
+}
+
+.el-color-picker .el-color-picker__trigger .el-color-picker__icon {
+  display: none;
+}
+
+.el-slider .el-slider__runway {
+  height: 8px;
+  margin: 14px 0;
+  border-radius: 6px;
+  background-color: #e5e5e5;
+}
+
+.el-slider .el-slider__runway .el-slider__bar {
+  height: 8px;
+  border-radius: 6px;
+  background-color: #0025ff;
+}
+
+.el-slider .el-slider__button-wrapper .el-slider__button {
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.2);
+  border: 3px solid #0025ff;
+}
+
+.el-slider .el-slider__button-wrapper .el-slider__button:hover {
+  cursor: pointer;
+  transform: unset;
+}
+
+.el-slider .el-slider__button-wrapper:hover {
+  cursor: pointer;
+}
+
+.el-slider .el-slider__button-wrapper.disabled .el-slider__bar {
+  background-color: #aeaeae;
+}
+
+.el-slider .el-slider__button-wrapper.disabled .el-slider__button {
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.2);
+  border: 3px solid #aeaeae;
+}
+
+.el-slider .el-slider__button-wrapper.disabled .el-slider__button:hover {
+  cursor: not-allowed;
+}
+
+.el-checkbox__input .el-checkbox__inner,
+.el-radio__input .el-radio__inner {
+  background-color: transparent !important;
+  border-color: #ebebee !important;
+}
+
+.el-checkbox__input .el-checkbox__inner {
+  width: 18px;
+  height: 18px;
+}
+
+.el-checkbox__input .el-checkbox__inner::after {
+  border: 2px solid #fff;
+  border-left: 0;
+  border-top: 0;
+  height: 8px;
+  left: 6px;
+  position: absolute;
+  top: 2px;
+}
+
+.el-radio__input .el-radio__inner {
+  width: 16px;
+  height: 16px;
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: #fff !important;
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner::after {
+  border-color: #0025ff;
+}
+
+.el-radio__input.is-checked .el-radio__inner {
+  background-color: #fff !important;
+}
+
+.el-radio__input.is-checked .el-radio__inner::after {
+  background-color: #0025ff;
+  width: 10px;
+  height: 10px;
+}
+
+.el-checkbox__label,
+.el-radio__label {
+  color: #1d1f20 !important;
+  font-weight: 600;
+  font-size: 13px;
+}

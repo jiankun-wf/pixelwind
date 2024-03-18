@@ -1,153 +1,293 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pixel Wind</title>
-    <!-- <script src="./modules/index.js"></script> -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.7.9/vue.min.js"></script>
-    <!-- 引入样式 -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"
-    />
-    <!-- 引入组件库 -->
-    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
 
-    <style>
-      body {
-        background-color: #1d1d20;
-        color: #fff;
-        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
-        margin: 0;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      /* 按钮 */
-      .cu-btn {
-        width: 210px;
-        text-align: center;
-        border-radius: 2px;
-        letter-spacing: 2px;
-        font-size: 15px;
-        cursor: pointer;
-        font-weight: bold;
-        height: 36px;
-        line-height: 35px;
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Wind</title>
+  <!-- <script src="./modules/index.js"></script> -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.7.9/vue.min.js"></script>
+  <!-- 引入样式 -->
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css" />
+  <!-- 引入组件库 -->
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
 
-        &.block {
-          width: 100%;
-        }
+  <link rel="stylesheet" href="./assets/css/index.css">
+  </link>
+  <link rel="stylesheet" href="./assets/css/elemet.css">
+  </link>
+</head>
 
-        &.small {
-          width: 93px;
-        }
+<body>
+  <div id="app">
+    <div class="left-content">
+      <el-form label-position="right" size="small" label-width="auto">
+        <el-form-item label="深色擦退">
+          <div class="switch-slider-content">
+            <el-checkbox v-model="imageConfig.fadeWay" true-label="out" false-label="in"
+              @change="handleFadeImage"></el-checkbox>
+            <div class="fill">
+              <el-slider v-model="imageConfig.fadeoutPercent" :max="100" :min="0" size="small"
+                :disabled="imageConfig.fadeWay === 'in'" :format-tooltip="formatTooltip"
+                @input="handleFadeImage"></el-slider>
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="浅色擦退">
+          <div class="switch-slider-content">
+            <el-checkbox v-model="imageConfig.fadeWay" true-label="in" false-label="out"
+              @change="handleFadeImage"></el-checkbox>
+            <div class="fill">
+              <el-slider v-model="imageConfig.fadeinPercent" :max="100" :min="0"
+                :disabled="imageConfig.fadeWay === 'out'" :format-tooltip="formatTooltip"
+                @input="handleFadeImage"></el-slider>
+            </div>
+          </div>
+        </el-form-item>
 
-        &.white {
-          background-color: #fff;
-          color: #1d1d20;
-        }
-        &.primary {
-          background-color: #0025ff;
-          color: #f3f3f3;
-        }
-      }
+        <div class="mutiple-rows">
+          <el-form-item label="纯色处理">
+            <el-checkbox v-model="imageConfig.isNativeColor" @change="() => handleNativeColor()"></el-checkbox>
+          </el-form-item>
 
-      #app {
-        width: 1200px;
-        margin: 0 auto;
-      }
+          <el-form-item label="纯色色值">
+            <el-color-picker v-model="imageConfig.nativeColor" :disabled="!imageConfig.isNativeColor" class="gray-color"
+              @change="() => handleNativeColor()"></el-color-picker>
+          </el-form-item>
 
-      .upload-row {
-        margin: 24px 0;
-      }
+          <el-form-item label="纯色反转">
+            <el-checkbox v-model="imageConfig.nativeColorRollBack" :disabled="!imageConfig.isNativeColor"
+              @change="() => handleNativeColorRollBack()"></el-checkbox>
+          </el-form-item>
+        </div>
 
-      .result-content {
-        width: 100%;
-        background-image: url(./assets/rect-bg.png);
-        min-height: 400px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 24px;
-        padding: 30px 0;
-        position: relative;
-      }
-      .download-btn {
-        position: absolute;
-        top: 0px;
-        right: 0px;
-      }
-    </style>
-  </head>
+        <el-form-item label="透明度">
+          <div class="switch-slider-content">
+            <el-checkbox v-model="imageConfig.transparent" @change="handleTransparent()"></el-checkbox>
+            <div class="fill">
+              <el-slider v-model="imageConfig.transparentPercent" :max="100" :min="0"
+                :disabled="!imageConfig.transparent" :format-tooltip="formatTooltip"
+                @input="handleTransparent()"></el-slider>
+            </div>
+          </div>
+        </el-form-item>
+      </el-form>
 
-  <body>
-    <div id="app">
-      <div class="upload-row">
-        <input
-          ref="uploadRef"
-          type="file"
-          accept="image/*"
-          @change="handleResolveFile"
-          style="display: none"
-        />
-        <div class="cu-btn primary" @click.stop="handleUpload">上传图片</div>
-      </div>
-
-      <div class="result-content">
-        <div class="cu-btn white download-btn small">下载图片</div>
-        <img ref="resultImage" style="display: none" />
+      <div style="margin-top: 45px;display: flex; flex-direction: column; row-gap: 12px; align-items: center;">
+        <div class="cu-btn primary" @click="handleDropWhite()">留白去除</div>
+        <div class="cu-btn white bordered" @click="handleDropTransparent()">透明度变白</div>
       </div>
     </div>
-  </body>
+    <div class="right-content">
+      <div class="main-content">
+        <div class="upload-row">
+          <input ref="uploadRef" type="file" accept="image/*" @change="handleResolveFile" style="display: none" />
+          <div class="cu-btn primary" @click.stop="handleUpload">
+            上传图片
+          </div>
 
-  <script type="module">
-    import { pw } from "./modules/index.js";
+          <div class="cu-btn white small" @click="handleDownload">下载图片</div>
 
-    const app = new window.Vue({
-      el: "#app",
-      data() {
-        return {
-          message: "123",
-          originalMat: null,
-          saveMat: null,
-        };
+        </div>
+
+        <div class="result-content">
+          <img ref="resultImage" style="display: none" />
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+<script type="module">
+  import { pw } from "./modules/index.js";
+
+  const app = new window.Vue({
+    el: "#app",
+    data() {
+      return {
+        originalMat: null,
+        saveMat: null,
+
+        imageConfig: {
+          fadeWay: "in",
+          fadeoutPercent: 0,
+          fadeinPercent: 0,
+          isNativeColor: false,
+          nativeColor: "#000000",
+          nativeColorRollBack: false,
+          transparentPercent: 100,
+        },
+      };
+    },
+    methods: {
+      handleUpload() {
+        this.$refs.uploadRef.click();
       },
-      methods: {
-        handleUpload() {
-          this.$refs.uploadRef.click();
-        },
-        calcResize(width, height) {
-          const config = { width, height };
-          if (width >= 1120) {
-            config.width = 1120;
-            config.height = (1120 / width) * height;
-          }
-
-          return config;
-        },
-        handleShowImg(mat) {
-          mat = mat || this.saveMat;
-          const { width, height } = mat.size;
-          const { width: rw, height: rh } = this.calcResize(width, height);
-          this.$refs.resultImage.width = rw;
-          this.$refs.resultImage.height = rh;
-          this.$refs.resultImage.src = mat.toDataUrl("image/png");
-        },
-        async handleResolveFile(e) {
-          const { target } = e;
-          const file = target.files[0];
-          if (file) {
-            const mat = await pw.readAsData(file);
-            this.originalMat = mat;
-            this.saveMat = mat;
-            this.handleShowImg();
-            this.$refs.resultImage.style.display = "block";
-            target.value = "";
-          }
-        },
+      formatTooltip(val) {
+        return `${val}%`;
       },
-    });
-  </script>
+      calcResize(width, height) {
+        const config = { width, height };
+        if (width >= 1120) {
+          config.width = 1120;
+          config.height = (1120 / width) * height;
+        }
+
+        return config;
+      },
+      handleShowImg(mat) {
+        mat = mat || this.saveMat;
+        const { width, height } = mat.size;
+        const { width: rw, height: rh } = this.calcResize(width, height);
+        this.$refs.resultImage.width = rw;
+        this.$refs.resultImage.height = rh;
+        this.$refs.resultImage.src = mat.toDataUrl("image/png");
+      },
+      async handleResolveFile(e) {
+        const { target } = e;
+        const file = target.files[0];
+        if (file) {
+          const mat = await pw.readAsData(file);
+          this.originalMat = mat;
+          this.saveMat = mat;
+          this.handleShowImg();
+          this.$refs.resultImage.style.display = "block";
+          target.value = "";
+        }
+      },
+      handleFadeImage() {
+        if (!this.originalMat) return;
+        const mat = this.originalMat.clone();
+
+        const {
+          isNativeColor,
+          fadeWay,
+          fadeinPercent,
+          fadeoutPercent,
+          transparent,
+          nativeColorRollBack,
+        } = this.imageConfig;
+
+        const percentage =
+          (fadeWay === "in" ? fadeinPercent : fadeoutPercent) / 100;
+
+        pw.fade(mat, fadeWay, percentage);
+
+        if (isNativeColor) {
+          this.handleNativeColor(mat);
+          if (this.nativeColorRollBack) {
+            this.handleNativeColorRollBack(mat);
+          }
+        }
+
+        if (transparent) {
+          this.handleTransparent(mat);
+        }
+
+        this.saveMat = mat.clone();
+
+        this.handleShowImg();
+
+        mat.delete();
+      },
+      handleNativeColor(mat = null) {
+        const { isNativeColor, nativeColor } = this.imageConfig;
+        if (!isNativeColor) {
+          return this.handleFadeImage();
+        }
+        mat = mat || this.saveMat;
+        if (!mat) return;
+        pw.native(mat, nativeColor);
+
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleNativeColorRollBack(mat = null) {
+        mat = mat || this.saveMat;
+        if (!mat) return;
+        pw.nativeRollback(mat);
+
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleTransparent(mat = null) {
+        mat = mat || this.saveMat;
+        if (!mat) return;
+        const { transparent, transparentPercent } = this.imageConfig;
+        if (transparent) {
+          const NA = 255 * (transparentPercent / 100);
+          mat.recycle((pixel, row, col) => {
+            mat.update(row, col, "A", Math.round(NA));
+          });
+        } else {
+          mat.recycle((pixel, row, col) => {
+            mat.update(row, col, "A", 255);
+          });
+        }
+
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleDropTransparent(mat = null) {
+        mat = mat || this.saveMat;
+        if (!mat) return;
+        mat.recycle((pixel, row, col) => {
+          const A = pixel[3]
+          if (A === 0) {
+            mat.update(row, col, "R", 255);
+            mat.update(row, col, "G", 255);
+            mat.update(row, col, "B", 255);
+            mat.update(row, col, "A", 255);
+          }
+        });
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleDropWhite(mat = null) {
+        mat = mat || this.saveMat;
+        if (!mat) return;
+        mat.recycle((pixel, row, col) => {
+          const [R, G, B] = pixel
+          if (R === 255 && G === 255 && B === 255) {
+            mat.update(row, col, "A", 0);
+          }
+        });
+
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleDownload() {
+        if (!this.saveMat) return;
+        
+        const a = document.createElement('a');
+
+        a.href = this.$refs.resultImage.src;
+        a.download = 'result.png';
+        a.target= '_self'
+
+        document.body.appendChild(a);
+
+        a.click()
+
+        document.body.removeChild(a)
+      }
+    },
+  });
+</script>
+
 </html>
