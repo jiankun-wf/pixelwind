@@ -74,7 +74,7 @@ class PixelWind {
       case "in":
         mat.recycle((pixel, row, col) => {
           const [R, G, B] = pixel;
-          if (R + G + B >= CR + CG + CB) {
+          if (R + G + B > CR + CG + CB) {
             mat.update(row, col, "R", 255);
             mat.update(row, col, "G", 255);
             mat.update(row, col, "B", 255);
@@ -84,7 +84,7 @@ class PixelWind {
       case "out":
         mat.recycle((pixel, row, col) => {
           const [R, G, B] = pixel;
-          if (R + G + B <= CR + CG + CB) {
+          if (R + G + B < CR + CG + CB) {
             mat.update(row, col, "R", 255);
             mat.update(row, col, "G", 255);
             mat.update(row, col, "B", 255);

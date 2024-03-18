@@ -50,7 +50,7 @@ class PixelWind {
             case "in":
                 mat.recycle((pixel, row, col) => {
                     const [R, G, B] = pixel;
-                    if (R + G + B >= CR + CG + CB) {
+                    if (R + G + B > CR + CG + CB) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
                         mat.update(row, col, "B", 255);
@@ -60,7 +60,7 @@ class PixelWind {
             case "out":
                 mat.recycle((pixel, row, col) => {
                     const [R, G, B] = pixel;
-                    if (R + G + B <= CR + CG + CB) {
+                    if (R + G + B < CR + CG + CB) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
                         mat.update(row, col, "B", 255);
@@ -337,6 +337,15 @@ class PixelWind {
             mat.update(row, col, "R", newValue);
             mat.update(row, col, "G", newValue);
             mat.update(row, col, "B", newValue);
+        });
+    }
+    // 去白
+    dropWhite(mat) {
+        mat.recycle((pixel, row, col) => {
+            const [R, G, B, A] = pixel;
+            if (R === 255 && G === 255 && B === 255 && A !== 0) {
+                mat.update(row, col, "A", 0);
+            }
         });
     }
     // 加权平均法 红色通道（R）因子
