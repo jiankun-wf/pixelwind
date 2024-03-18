@@ -431,6 +431,16 @@ class PixelWind {
     });
   }
 
+  // 去白
+  dropWhite(mat: Mat) {
+    mat.recycle((pixel, row, col) => {
+      const [R, G, B, A] = pixel;
+      if (R === 255 && G === 255 && B === 255 && A !== 0) {
+        mat.update(row, col, "A", 0);
+      }
+    });
+  }
+
   // 加权平均法 红色通道（R）因子
   static readonly GRAY_SCALE_RED = 0.2989;
   // 加权平均法 绿色通道（G）因子
