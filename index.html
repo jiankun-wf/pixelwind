@@ -73,12 +73,14 @@
         </el-form-item>
       </el-form>
 
-      <div style="margin-top: 45px;display: flex; flex-direction: column; row-gap: 12px; align-items: center;">
-        <div class="cu-btn primary" @click="handleDropWhite()">留白去除</div>
-        <div class="cu-btn white bordered" @click="handleDropTransparent()">透明度变白</div>
+      <div class="one-shot-tool">
+        <div class="cu-btn primary small" @click="handleDropWhite()">留白去除</div>
+        <div class="cu-btn primary small" @click="handleDropTransparent()">透明度变白</div>
+        <div class="cu-btn primary small" @click="handleToGray()">灰度滤镜</div>
+        <div class="cu-btn primary small" @click="handleToGroundGlass()">毛玻璃滤镜</div>
       </div>
     </div>
-    <div class="right-content">
+    <div class="right-content"> 
       <div class="main-content">
         <div class="upload-row">
           <input ref="uploadRef" type="file" accept="image/*" @change="handleResolveFile" style="display: none" />
@@ -265,6 +267,27 @@
           }
         });
 
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleToGray(mat = null) {
+        mat = mat || this.saveMat;
+        if(!mat) return;
+        pw.gray(mat);
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+
+      },
+      handleToGroundGlass(mat = null) {
+        mat = mat || this.saveMat;
+        if(!mat) return;
+        pw.groundGlass(mat, 5);
         if (!arguments.length) {
           this.saveMat = mat.clone();
           mat.delete();

@@ -94,3 +94,13 @@ body {
   flex-direction: row;
   column-gap: 12px;
 }
+
+.one-shot-tool {
+  margin-top: 45px;
+  display: flex;
+  flex-direction: row;
+  row-gap: 12px;
+  column-gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}

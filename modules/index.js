@@ -339,6 +339,39 @@ class PixelWind {
             mat.update(row, col, "B", newValue);
         });
     }
+    // 去白
+    dropWhite(mat) {
+        mat.recycle((pixel, row, col) => {
+            const [R, G, B, A] = pixel;
+            if (R === 255 && G === 255 && B === 255 && A !== 0) {
+                mat.update(row, col, "A", 0);
+            }
+        });
+    }
+    // 毛玻璃
+    // 原理：取一个随即个 , 
+    groundGlass(mat, offset = 5, both = false) {
+        if (!offset || offset <= 0) {
+            errorlog("offset 需为正整数！");
+        }
+        const { rows, cols } = mat;
+        const offsetRows = rows - offset;
+        const offsetCols = cols - offset;
+        for (let row = 0; row < offsetRows; row++) {
+            for (let col = 0; col < offsetCols; col++) {
+                const indexX = Math.floor(Math.random() * offset);
+                const indexY = Math.floor(Math.random() * offset);
+                const offsetX = row + indexX;
+                const offsetY = col + indexY;
+                const [R, G, B, A] = mat.at(offsetX, offsetY);
+                mat.update(row, col, "R", R);
+                mat.update(row, col, "G", G);
+                mat.update(row, col, "B", B);
+                mat.update(row, col, "A", A);
+            }
+        }
+    }
+    //
     // 加权平均法 红色通道（R）因子
     static GRAY_SCALE_RED = 0.2989;
     // 加权平均法 绿色通道（G）因子
@@ -564,10 +597,7 @@ class Mat {
         const { rows, cols } = this;
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
-                const b = callback(this.at(row, col), row, col);
-                if (b === "break") {
-                    return;
-                }
+                callback(this.at(row, col), row, col);
             }
         }
     }
@@ -593,12 +623,12 @@ class Mat {
             canvasEl.height = clipHeight;
             window
                 .createImageBitmap(imageData, {
-                resizeHeight: clipHeight,
-                resizeWidth: clipWidth,
-            })
+                    resizeHeight: clipHeight,
+                    resizeWidth: clipWidth,
+                })
                 .then((imageBitmap) => {
-                ctx.drawImage(imageBitmap, 0, 0);
-            });
+                    ctx.drawImage(imageBitmap, 0, 0);
+                });
         }
         else {
             canvasEl.width = width;

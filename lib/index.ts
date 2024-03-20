@@ -441,6 +441,34 @@ class PixelWind {
     });
   }
 
+  // 毛玻璃
+  // 原理，在 0到offset中随机取一个整数，将当前像素点坐标x，y分别加这个整数，得到新的像素点
+  // 将新的像素点的RGBA通道赋值给当前像素点
+  // bothFamily：像素点x，y是否分别随机，对于一些色彩纹理较多的图像，建议关闭
+  groundGlass(mat: Mat, offset: number = 5, bothFamily: boolean = true) {
+    if (!offset || offset <= 0) {
+      errorlog("offset 需为正整数！");
+    }
+    const { rows, cols } = mat;
+    const offsetRows = rows - offset;
+    const offsetCols = cols - offset;
+    for (let row = 0; row < offsetRows; row++) {
+      for (let col = 0; col < offsetCols; col++) {
+        const index = Math.floor(Math.random() * offset);
+        const offsetX = row + index;
+        const offsetY =
+          col + (bothFamily ? index : Math.floor(Math.random() * offset));
+        const [R, G, B, A] = mat.at(offsetX, offsetY);
+        mat.update(row, col, "R", R);
+        mat.update(row, col, "G", G);
+        mat.update(row, col, "B", B);
+        mat.update(row, col, "A", A);
+      }
+    }
+  }
+
+  //
+
   // 加权平均法 红色通道（R）因子
   static readonly GRAY_SCALE_RED = 0.2989;
   // 加权平均法 绿色通道（G）因子
@@ -730,10 +758,7 @@ class Mat {
     const { rows, cols } = this;
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        const b = callback(this.at(row, col) as Pixel, row, col);
-        if (b === "break") {
-          return;
-        }
+        callback(this.at(row, col) as Pixel, row, col);
       }
     }
   }
