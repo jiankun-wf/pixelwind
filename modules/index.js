@@ -348,11 +348,11 @@ class PixelWind {
             }
         });
     }
-    // 毛玻璃
+    // 毛玻璃滤镜
     // 原理，在 0到offset中随机取一个整数，将当前像素点坐标x，y分别加这个整数，得到新的像素点
     // 将新的像素点的RGBA通道赋值给当前像素点
     // bothFamily：像素点x，y是否分别随机，对于一些色彩纹理较多的图像，建议关闭
-    groundGlass(mat, offset = 5, bothFamily = true) {
+    groundGlassFilter(mat, offset = 5, bothFamily = true) {
         if (!offset || offset <= 0) {
             errorlog("offset 需为正整数！");
         }
@@ -372,7 +372,33 @@ class PixelWind {
             }
         }
     }
-    //
+    // 怀旧滤镜
+    // 公式化计算RGB
+    nostalgiaFilter(mat) {
+        mat.recycle((pixel, row, col) => {
+            const [R, G, B] = pixel;
+            const NR = Math.min(0.393 * R + 0.769 * G + 0.189 * B, 255);
+            const NG = Math.min(0.349 * R + 0.686 * G + 0.168 * B, 255);
+            const NB = Math.min(0.272 * R + 0.534 * G + 0.131 * B, 255);
+            mat.update(row, col, "R", NR);
+            mat.update(row, col, "G", NG);
+            mat.update(row, col, "B", NB);
+        });
+    }
+    // 流年滤镜
+    fleetingFilter(mat, size = 12) {
+        size = Math.round(size);
+        if (size <= 0) {
+            errorlog("因子必须大于0");
+        }
+        mat.recycle((pixel, row, col) => {
+            const [R, G, B] = pixel;
+            const NB = Math.sqrt(B) * size;
+            mat.update(row, col, "R", R);
+            mat.update(row, col, "G", G);
+            mat.update(row, col, "B", NB);
+        });
+    }
     // 加权平均法 红色通道（R）因子
     static GRAY_SCALE_RED = 0.2989;
     // 加权平均法 绿色通道（G）因子

@@ -76,8 +76,10 @@
       <div class="one-shot-tool">
         <div class="cu-btn primary small" @click="handleDropWhite()">留白去除</div>
         <div class="cu-btn primary small" @click="handleDropTransparent()">透明度变白</div>
-        <div class="cu-btn primary small" @click="handleToGray()">灰度滤镜</div>
-        <div class="cu-btn primary small" @click="handleToGroundGlass()">毛玻璃滤镜</div>
+        <div class="cu-btn white bordered small" @click="handleToGray()">灰度滤镜</div>
+        <div class="cu-btn white bordered small" @click="handleToGroundGlass()">毛玻璃滤镜</div>
+        <div class="cu-btn white bordered small" @click="handleToNostalgiaFilter()">复古滤镜</div>
+        <div class="cu-btn white bordered small" @click="handleToFleetingFilter()">流年滤镜</div>
       </div>
     </div>
     <div class="right-content"> 
@@ -288,7 +290,27 @@
       handleToGroundGlass(mat = null) {
         mat = mat || this.saveMat;
         if(!mat) return;
-        pw.groundGlass(mat, 5);
+        pw.groundGlassFilter(mat, 5);
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleToNostalgiaFilter(mat = null) {
+        mat = mat || this.saveMat;
+        if(!mat) return;
+        pw.nostalgiaFilter(mat);
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleToFleetingFilter(mat = null) {
+        mat = mat || this.saveMat;
+        if(!mat) return;
+        pw.fleetingFilter(mat);
         if (!arguments.length) {
           this.saveMat = mat.clone();
           mat.delete();

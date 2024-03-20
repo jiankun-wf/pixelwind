@@ -441,11 +441,11 @@ class PixelWind {
     });
   }
 
-  // 毛玻璃
+  // 毛玻璃滤镜
   // 原理，在 0到offset中随机取一个整数，将当前像素点坐标x，y分别加这个整数，得到新的像素点
   // 将新的像素点的RGBA通道赋值给当前像素点
   // bothFamily：像素点x，y是否分别随机，对于一些色彩纹理较多的图像，建议关闭
-  groundGlass(mat: Mat, offset: number = 5, bothFamily: boolean = true) {
+  groundGlassFilter(mat: Mat, offset: number = 5, bothFamily: boolean = true) {
     if (!offset || offset <= 0) {
       errorlog("offset 需为正整数！");
     }
@@ -467,7 +467,55 @@ class PixelWind {
     }
   }
 
-  //
+  // 怀旧滤镜
+  // 公式化计算RGB
+  nostalgiaFilter(mat: Mat) {
+    mat.recycle((pixel, row, col) => {
+      const [R, G, B] = pixel;
+
+      const NR = Math.min(0.393 * R + 0.769 * G + 0.189 * B, 255);
+      const NG = Math.min(0.349 * R + 0.686 * G + 0.168 * B, 255);
+      const NB = Math.min(0.272 * R + 0.534 * G + 0.131 * B, 255);
+
+      mat.update(row, col, "R", NR);
+      mat.update(row, col, "G", NG);
+      mat.update(row, col, "B", NB);
+    });
+  }
+
+  // 流年滤镜 B通道取平方根 然后乘以因子
+  fleetingFilter(mat: Mat, size: number = 12) {
+    size = Math.round(size);
+    if (size <= 0) {
+      errorlog("因子必须大于0");
+    }
+    mat.recycle((pixel, row, col) => {
+      const B = pixel[2];
+
+      const NB = Math.sqrt(B) * size;
+      mat.update(row, col, "B", NB);
+    });
+  }
+
+  // 光照滤镜
+  sunLightFilter(
+    mat: Mat,
+    centerX?: number,
+    centerY?: number,
+    radius?: number,
+    strength: number = 200
+  ) {
+    const { rows, cols } = mat;
+
+    centerX = centerX || Math.floor(rows / 2);
+    centerY = centerY || Math.floor(cols / 2);
+    radius = radius || Math.min(rows, cols);
+
+    mat.recycle((pixel, row, col) => {
+      const distance = Math.pow(centerX - row, 2) + Math.pow(centerY - col, 2);
+      const [R, G, B] = pixel;
+    });
+  }
 
   // 加权平均法 红色通道（R）因子
   static readonly GRAY_SCALE_RED = 0.2989;
@@ -719,7 +767,7 @@ class Mat {
   //   return { exec: exec.bind.bind(this), collect };
   // }
 
-  update(row, col, type: "R" | "G" | "B" | "A", value: number) {
+  update(row: number, col: number, type: "R" | "G" | "B" | "A", value: number) {
     const { data } = this;
     const [R, G, B, A] = this.getAddress(row, col);
 
