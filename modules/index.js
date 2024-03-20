@@ -50,7 +50,7 @@ class PixelWind {
             case "in":
                 mat.recycle((pixel, row, col) => {
                     const [R, G, B] = pixel;
-                    if (R + G + B >= CR + CG + CB) {
+                    if (R + G + B > CR + CG + CB) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
                         mat.update(row, col, "B", 255);
@@ -60,7 +60,7 @@ class PixelWind {
             case "out":
                 mat.recycle((pixel, row, col) => {
                     const [R, G, B] = pixel;
-                    if (R + G + B <= CR + CG + CB) {
+                    if (R + G + B < CR + CG + CB) {
                         mat.update(row, col, "R", 255);
                         mat.update(row, col, "G", 255);
                         mat.update(row, col, "B", 255);
@@ -349,8 +349,10 @@ class PixelWind {
         });
     }
     // 毛玻璃
-    // 原理：取一个随即个 , 
-    groundGlass(mat, offset = 5, both = false) {
+    // 原理，在 0到offset中随机取一个整数，将当前像素点坐标x，y分别加这个整数，得到新的像素点
+    // 将新的像素点的RGBA通道赋值给当前像素点
+    // bothFamily：像素点x，y是否分别随机，对于一些色彩纹理较多的图像，建议关闭
+    groundGlass(mat, offset = 5, bothFamily = true) {
         if (!offset || offset <= 0) {
             errorlog("offset 需为正整数！");
         }
@@ -359,10 +361,9 @@ class PixelWind {
         const offsetCols = cols - offset;
         for (let row = 0; row < offsetRows; row++) {
             for (let col = 0; col < offsetCols; col++) {
-                const indexX = Math.floor(Math.random() * offset);
-                const indexY = Math.floor(Math.random() * offset);
-                const offsetX = row + indexX;
-                const offsetY = col + indexY;
+                const index = Math.floor(Math.random() * offset);
+                const offsetX = row + index;
+                const offsetY = col + (bothFamily ? index : Math.floor(Math.random() * offset));
                 const [R, G, B, A] = mat.at(offsetX, offsetY);
                 mat.update(row, col, "R", R);
                 mat.update(row, col, "G", G);
@@ -623,12 +624,12 @@ class Mat {
             canvasEl.height = clipHeight;
             window
                 .createImageBitmap(imageData, {
-                    resizeHeight: clipHeight,
-                    resizeWidth: clipWidth,
-                })
+                resizeHeight: clipHeight,
+                resizeWidth: clipWidth,
+            })
                 .then((imageBitmap) => {
-                    ctx.drawImage(imageBitmap, 0, 0);
-                });
+                ctx.drawImage(imageBitmap, 0, 0);
+            });
         }
         else {
             canvasEl.width = width;

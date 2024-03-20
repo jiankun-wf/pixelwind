@@ -93,7 +93,7 @@
         </div>
 
         <div class="result-content">
-          <img ref="resultImage" style="display: none" />
+          <img ref="resultImage" draggable="false" @mousedown.prevent @drag.prevent @ style="display: none" />
         </div>
       </div>
     </div>
@@ -150,8 +150,8 @@
         const file = target.files[0];
         if (file) {
           const mat = await pw.readAsData(file);
-          this.originalMat = mat;
-          this.saveMat = mat;
+          this.originalMat = mat.clone();
+          this.saveMat = mat.clone();
           this.handleShowImg();
           this.$refs.resultImage.style.display = "block";
           target.value = "";
@@ -177,7 +177,7 @@
 
         if (isNativeColor) {
           this.handleNativeColor(mat);
-          if (this.nativeColorRollBack) {
+          if (nativeColorRollBack) {
             this.handleNativeColorRollBack(mat);
           }
         }
@@ -208,6 +208,7 @@
         }
       },
       handleNativeColorRollBack(mat = null) {
+        debugger;
         mat = mat || this.saveMat;
         if (!mat) return;
         pw.nativeRollback(mat);
@@ -253,8 +254,8 @@
         });
         if (!arguments.length) {
           this.saveMat = mat.clone();
-          mat.delete();
           this.handleShowImg();
+          mat.delete();
         }
       },
       handleDropWhite(mat = null) {
@@ -269,8 +270,8 @@
 
         if (!arguments.length) {
           this.saveMat = mat.clone();
-          mat.delete();
           this.handleShowImg();
+          mat.delete();
         }
       },
       handleToGray(mat = null) {
