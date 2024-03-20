@@ -80,6 +80,7 @@
         <div class="cu-btn white bordered small" @click="handleToGroundGlass()">毛玻璃滤镜</div>
         <div class="cu-btn white bordered small" @click="handleToNostalgiaFilter()">复古滤镜</div>
         <div class="cu-btn white bordered small" @click="handleToFleetingFilter()">流年滤镜</div>
+        <div class="cu-btn white bordered small" @click="handleToSunLightFilter()">阳光滤镜</div>
       </div>
     </div>
     <div class="right-content"> 
@@ -311,6 +312,16 @@
         mat = mat || this.saveMat;
         if(!mat) return;
         pw.fleetingFilter(mat);
+        if (!arguments.length) {
+          this.saveMat = mat.clone();
+          mat.delete();
+          this.handleShowImg();
+        }
+      },
+      handleToSunLightFilter(mat = null) {
+        mat = mat || this.saveMat;
+        if(!mat) return;
+        pw.sunLightFilter(mat);
         if (!arguments.length) {
           this.saveMat = mat.clone();
           mat.delete();

@@ -385,18 +385,33 @@ class PixelWind {
             mat.update(row, col, "B", NB);
         });
     }
-    // 流年滤镜
+    // 流年滤镜 B通道取平方根 然后乘以因子
     fleetingFilter(mat, size = 12) {
         size = Math.round(size);
         if (size <= 0) {
             errorlog("因子必须大于0");
         }
         mat.recycle((pixel, row, col) => {
-            const [R, G, B] = pixel;
+            const B = pixel[2];
             const NB = Math.sqrt(B) * size;
-            mat.update(row, col, "R", R);
-            mat.update(row, col, "G", G);
             mat.update(row, col, "B", NB);
+        });
+    }
+    // 光照滤镜
+    sunLightFilter(mat, centerX, centerY, radius, strength = 200) {
+        const { rows, cols } = mat;
+        centerX = centerX || Math.floor(rows / 2);
+        centerY = centerY || Math.floor(cols / 2);
+        radius = radius || Math.min(rows, cols);
+        mat.recycle((pixel, row, col) => {
+            const distance = Math.pow(centerX - row, 2) + Math.pow(centerY - col, 2);
+            if (distance < Math.pow(radius, 2)) {
+                const [R, G, B] = pixel;
+                const suffix = Math.round(strength * (1.0 - Math.sqrt(distance) / radius));
+                mat.update(row, col, 'R', Math.min(255, Math.max(0, R + suffix)));
+                mat.update(row, col, 'G', Math.min(255, Math.max(0, G + suffix)));
+                mat.update(row, col, 'B', Math.min(255, Math.max(0, B + suffix)));
+            }
         });
     }
     // 加权平均法 红色通道（R）因子

@@ -513,7 +513,14 @@ class PixelWind {
 
     mat.recycle((pixel, row, col) => {
       const distance = Math.pow(centerX - row, 2) + Math.pow(centerY - col, 2);
-      const [R, G, B] = pixel;
+      if(distance < Math.pow(radius, 2)) {
+        const [R, G, B] = pixel; 
+        const suffix = Math.round(strength * (1.0 - Math.sqrt(distance) / radius ));
+
+        mat.update(row, col, 'R', Math.min(255, Math.max(0, R + suffix)));
+        mat.update(row, col, 'G', Math.min(255, Math.max(0, G + suffix)));
+        mat.update(row, col, 'B', Math.min(255, Math.max(0, B + suffix)));
+      }
     });
   }
 
