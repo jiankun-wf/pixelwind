@@ -4,8 +4,6 @@ const path = require('path')
 const chalk = require('chalk');
 const open = require('open')
 
-console.log(process.argv)
-
 
 const app = express();
 

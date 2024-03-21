@@ -498,12 +498,15 @@ class PixelWind {
   }
 
   // 光照滤镜
+  // centerX, centerY 中心点
+  // radius 光照圆半径
+  // strength 光照强度
   sunLightFilter(
     mat: Mat,
     centerX?: number,
     centerY?: number,
     radius?: number,
-    strength: number = 200
+    strength: number = 150
   ) {
     const { rows, cols } = mat;
 
@@ -512,14 +515,20 @@ class PixelWind {
     radius = radius || Math.min(rows, cols);
 
     mat.recycle((pixel, row, col) => {
+      // 取三角形 x^2 + y^2的第三边距离（此处不用开平方根，比较大小结果都一致，还省去运算过程）
       const distance = Math.pow(centerX - row, 2) + Math.pow(centerY - col, 2);
-      if(distance < Math.pow(radius, 2)) {
-        const [R, G, B] = pixel; 
-        const suffix = Math.round(strength * (1.0 - Math.sqrt(distance) / radius ));
+      // 所在点在光照圆内
+      if (distance < Math.pow(radius, 2)) {
+        const [R, G, B] = pixel;
+        // 计算加强光照值
+        const suffix = Math.round(
+          strength * (1.0 - Math.sqrt(distance) / radius)
+        );
 
-        mat.update(row, col, 'R', Math.min(255, Math.max(0, R + suffix)));
-        mat.update(row, col, 'G', Math.min(255, Math.max(0, G + suffix)));
-        mat.update(row, col, 'B', Math.min(255, Math.max(0, B + suffix)));
+        // 判断R的边缘值 0 - 255 然后赋值
+        mat.update(row, col, "R", Math.min(255, Math.max(0, R + suffix)));
+        mat.update(row, col, "G", Math.min(255, Math.max(0, G + suffix)));
+        mat.update(row, col, "B", Math.min(255, Math.max(0, B + suffix)));
       }
     });
   }
