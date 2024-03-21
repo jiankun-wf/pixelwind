@@ -87,6 +87,7 @@
       <div class="main-content">
         <div class="upload-row">
           <input ref="uploadRef" type="file" accept="image/*" @change="handleResolveFile" style="display: none" />
+
           <div class="cu-btn primary" @click.stop="handleUpload">
             上传图片
           </div>
@@ -96,6 +97,8 @@
         </div>
 
         <div class="result-content">
+          <i title="重置图片" v-if="originalMat" class="el-icon reset-icon el-icon-refresh-right" @click="handleResetImage" ></i>
+
           <img ref="resultImage" draggable="false" @mousedown.prevent @drag.prevent @ style="display: none" />
         </div>
       </div>
@@ -342,6 +345,10 @@
         a.click()
 
         document.body.removeChild(a)
+      },
+      handleResetImage() {
+        this.saveMat = this.originalMat.clone();
+        this.handleShowImg();
       }
     },
   });
