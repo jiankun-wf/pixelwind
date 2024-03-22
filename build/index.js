@@ -38,7 +38,7 @@ async function start() {
             path.resolve(__dirname, '..', 'lib/index.ts')
         ],
         write: true,
-        minify: true,
+        // minify: true,
     });
     const esmFs = await fs.statSync(path.resolve(__dirname, '..', 'modules/index.mjs'));
     files.push({ name: path.resolve(__dirname, '..', 'modules/index.mjs'), size: getFileSize(esmFs.size) })
