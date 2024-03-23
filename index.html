@@ -71,22 +71,28 @@
             </div>
           </div>
         </el-form-item>
-      </el-form>
 
-      <div class="one-shot-tool">
-        <div class="cu-btn primary small" @click="handleDropWhite()">留白去除</div>
-        <div class="cu-btn primary small" @click="handleDropTransparent()">透明度变白</div>
-        <div class="cu-btn white bordered small" @click="handleToGray()">灰度滤镜</div>
-        <div class="cu-btn white bordered small" @click="handleToGroundGlass()">毛玻璃滤镜</div>
-        <div class="cu-btn white bordered small" @click="handleToNostalgiaFilter()">复古滤镜</div>
-        <div class="cu-btn white bordered small" @click="handleToFleetingFilter()">流年滤镜</div>
-        <div class="cu-btn white bordered small" @click="handleToSunLightFilter()">阳光滤镜</div>
-      </div>
+        <div class="one-shot-tool">
+          <div class="cu-btn primary small" @click="handleDropWhite()">留白去除</div>
+          <div class="cu-btn primary small" @click="handleDropTransparent()">透明度变白</div>
+          <div class="cu-btn white bordered small" @click="handleToGray()">灰度滤镜</div>
+          <div class="cu-btn white bordered small" @click="handleToGroundGlass()">毛玻璃滤镜</div>
+          <div class="cu-btn white bordered small" @click="handleToNostalgiaFilter()">复古滤镜</div>
+          <div class="cu-btn white bordered small" @click="handleToFleetingFilter()">流年滤镜</div>
+          <div class="cu-btn white bordered small" @click="handleToSunLightFilter()">阳光滤镜</div>
+        </div>
+
+
+        <el-form-item label="缩放比例">
+          <el-slider v-model="imageConfig.scale" :max="2" :min="0.1" :step="0.1" @input="handleScale()"></el-slider>
+        </el-form-item>
+      </el-form>
     </div>
-    <div class="right-content"> 
+    <div class="right-content">
       <div class="main-content">
         <div class="upload-row">
           <input ref="uploadRef" type="file" accept="image/*" @change="handleResolveFile" style="display: none" />
+
           <div class="cu-btn primary" @click.stop="handleUpload">
             上传图片
           </div>
@@ -96,6 +102,9 @@
         </div>
 
         <div class="result-content">
+          <i title="重置图片" v-if="originalMat" class="el-icon reset-icon el-icon-refresh-right"
+            @click="handleResetImage"></i>
+
           <img ref="resultImage" draggable="false" @mousedown.prevent @drag.prevent @ style="display: none" />
         </div>
       </div>
@@ -121,6 +130,7 @@
           nativeColor: "#000000",
           nativeColorRollBack: false,
           transparentPercent: 100,
+          scale: 1,
         },
       };
     },
@@ -279,7 +289,7 @@
       },
       handleToGray(mat = null) {
         mat = mat || this.saveMat;
-        if(!mat) return;
+        if (!mat) return;
         pw.gray(mat);
         if (!arguments.length) {
           this.saveMat = mat.clone();
@@ -290,7 +300,7 @@
       },
       handleToGroundGlass(mat = null) {
         mat = mat || this.saveMat;
-        if(!mat) return;
+        if (!mat) return;
         pw.groundGlassFilter(mat, 5);
         if (!arguments.length) {
           this.saveMat = mat.clone();
@@ -300,7 +310,7 @@
       },
       handleToNostalgiaFilter(mat = null) {
         mat = mat || this.saveMat;
-        if(!mat) return;
+        if (!mat) return;
         pw.nostalgiaFilter(mat);
         if (!arguments.length) {
           this.saveMat = mat.clone();
@@ -310,7 +320,7 @@
       },
       handleToFleetingFilter(mat = null) {
         mat = mat || this.saveMat;
-        if(!mat) return;
+        if (!mat) return;
         pw.fleetingFilter(mat);
         if (!arguments.length) {
           this.saveMat = mat.clone();
@@ -320,7 +330,7 @@
       },
       handleToSunLightFilter(mat = null) {
         mat = mat || this.saveMat;
-        if(!mat) return;
+        if (!mat) return;
         pw.sunLightFilter(mat);
         if (!arguments.length) {
           this.saveMat = mat.clone();
@@ -328,20 +338,32 @@
           this.handleShowImg();
         }
       },
+      handleScale(mat = null) {
+        mat = mat || this.saveMat;
+        if (!mat) return;
+        const { scale } = this.imageConfig;
+        const { size: { width, height } } = mat;
+        const nMat =  pw.resize(mat, Math.round(scale * width), Math.round(scale * height), pw.RESIZE.INTER_NEAREST);        
+        this.handleShowImg(nMat);
+      },
       handleDownload() {
         if (!this.saveMat) return;
-        
+
         const a = document.createElement('a');
 
         a.href = this.$refs.resultImage.src;
         a.download = 'result.png';
-        a.target= '_self'
+        a.target = '_self'
 
         document.body.appendChild(a);
 
         a.click()
 
         document.body.removeChild(a)
+      },
+      handleResetImage() {
+        this.saveMat = this.originalMat.clone();
+        this.handleShowImg();
       }
     },
   });

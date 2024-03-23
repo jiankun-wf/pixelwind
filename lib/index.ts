@@ -54,6 +54,80 @@ class PixelWind {
     }
   }
 
+  RESIZE = {
+    // 最临近值算法
+    INTER_NEAREST: 1,
+    // 双线性插值
+    INTER_LINEAR: 2,
+    // 
+    INTER_CUBIC: 3,
+    // 
+    INTER_AREA: 4,
+    // 
+    INTER_LANCZOS4: 5,
+  };
+  // 图片缩放
+  resize(
+    mat: Mat,
+    scaleWidth: number,
+    scaleHeight: number,
+    mode: number = this.RESIZE.INTER_LINEAR
+  ): Mat {
+    const imageData = new ImageData(
+      new Uint8ClampedArray(scaleHeight * scaleWidth * 4),
+      scaleWidth,
+      scaleHeight
+    );
+    const execMat = new Mat(imageData);
+
+    const {
+      size: { width, height },
+    } = mat;
+
+    switch (mode) {
+      // 像素最邻近法
+      case this.RESIZE.INTER_NEAREST:
+        const xRatio = width / scaleWidth;
+        const yRatio = height / scaleHeight;
+        execMat.recycle((_pixel, row, col) => {
+          const scaleX = Math.round(row * xRatio);
+          const scaleY = Math.round(col * yRatio);
+          const [R, G, B, A] = mat.at(scaleX, scaleY);
+
+          execMat.update(row, col, "R", R);
+          execMat.update(row, col, "G", G);
+          execMat.update(row, col, "B", B);
+          execMat.update(row, col, "A", A);
+        });
+        return execMat;
+      // 双线性插值法
+      // int x = (i+0.5) * width/outWidth - 0.5
+      // int y = (j+0.5) * height/outHeight - 0.5
+      case this.RESIZE.INTER_LINEAR:
+        const xRatio = width / scaleWidth;
+        const yRatio = height / scaleHeight;
+        execMat.recycle((_pixel, row, col) => {
+          // 
+          const srcX = (row + 0.5)  * xRatio - 0.5;
+          const srcY = (col + 0.5)  * yRatio - 0.5;
+          var x1 = Math.floor(srcX);
+      var y1 = Math.floor(srcY);
+      var x2 = Math.ceil(srcX);
+      var y2 = Math.ceil(srcY);
+
+
+        });
+
+        return;
+      case this.RESIZE.INTER_CUBIC:
+        return;
+      case this.RESIZE.INTER_AREA:
+        return;
+      case this.RESIZE.INTER_LANCZOS4:
+        return;
+    }
+  }
+
   // 图像的 浅色擦除/深色擦除      渐隐比例：0.50
   fade(mat: Mat, mode: FadeMode, percent: number) {
     const per = mode === "in" ? 1 - percent : percent;
