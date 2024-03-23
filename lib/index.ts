@@ -54,17 +54,32 @@ class PixelWind {
     }
   }
 
+  static calcResizeLinerFunc(
+    point1: number,
+    point2: number,
+    point3: number,
+    point4: number,
+    u: number,
+    v: number
+  ) {
+    return (
+      (1 - u) * (1 - v) * point1 +
+      u * (1 - v) * point2 +
+      (1 - u) * v * point3 +
+      u * v * point4
+    );
+  }
   RESIZE = {
-    // 最临近值算法
+    // 最临近值算法 计算速度最快，质量差
     INTER_NEAREST: 1,
-    // 双线性插值
+    // 双线性插值  计算速度适中，质量一般（默认）
     INTER_LINEAR: 2,
-    // 
+    // 三次样条插值  计算速度较慢，质量最好
     INTER_CUBIC: 3,
-    // 
-    INTER_AREA: 4,
-    // 
-    INTER_LANCZOS4: 5,
+    //
+    // INTER_AREA: 4,
+    //
+    // INTER_LANCZOS4: 5,
   };
   // 图片缩放
   resize(
@@ -84,11 +99,12 @@ class PixelWind {
       size: { width, height },
     } = mat;
 
+    const xRatio = width / scaleWidth;
+    const yRatio = height / scaleHeight;
+
     switch (mode) {
       // 像素最邻近法
       case this.RESIZE.INTER_NEAREST:
-        const xRatio = width / scaleWidth;
-        const yRatio = height / scaleHeight;
         execMat.recycle((_pixel, row, col) => {
           const scaleX = Math.round(row * xRatio);
           const scaleY = Math.round(col * yRatio);
@@ -101,30 +117,97 @@ class PixelWind {
         });
         return execMat;
       // 双线性插值法
-      // int x = (i+0.5) * width/outWidth - 0.5
-      // int y = (j+0.5) * height/outHeight - 0.5
       case this.RESIZE.INTER_LINEAR:
-        const xRatio = width / scaleWidth;
-        const yRatio = height / scaleHeight;
         execMat.recycle((_pixel, row, col) => {
-          // 
-          const srcX = (row + 0.5)  * xRatio - 0.5;
-          const srcY = (col + 0.5)  * yRatio - 0.5;
-          var x1 = Math.floor(srcX);
-      var y1 = Math.floor(srcY);
-      var x2 = Math.ceil(srcX);
-      var y2 = Math.ceil(srcY);
+          // int x = (i+0.5) * width/outWidth - 0.5
+          // int y = (j+0.5) * height/outHeight - 0.5
+          const srcX = (row + 0.5) * xRatio - 0.5;
+          const srcY = (col + 0.5) * yRatio - 0.5;
 
+          // 获取四个最邻近点
+          const x1 = Math.floor(srcX),
+            y1 = Math.floor(srcY),
+            x2 = Math.ceil(srcX),
+            y2 = Math.ceil(srcY);
 
+          const u = srcX - x1,
+            v = srcY - y1;
+
+          const [R_x1_y1, G_x1_y1, B_x1_y1, A_x1_y1] = mat.at(x1, y1);
+          const [R_x2_y1, G_x2_y1, B_x2_y1, A_x2_y1] = mat.at(x2, y1);
+          const [R_x1_y2, G_x1_y2, B_x1_y2, A_x1_y2] = mat.at(x1, y2);
+          const [R_x2_y2, G_x2_y2, B_x2_y2, A_x2_y2] = mat.at(x2, y2);
+
+          const NR = PixelWind.calcResizeLinerFunc(
+            R_x1_y1,
+            R_x2_y1,
+            R_x1_y2,
+            R_x2_y2,
+            u,
+            v
+          );
+          const NG = PixelWind.calcResizeLinerFunc(
+            G_x1_y1,
+            G_x2_y1,
+            G_x1_y2,
+            G_x2_y2,
+            u,
+            v
+          );
+          const NB = PixelWind.calcResizeLinerFunc(
+            B_x1_y1,
+            B_x2_y1,
+            B_x1_y2,
+            B_x2_y2,
+            u,
+            v
+          );
+          const NA = PixelWind.calcResizeLinerFunc(
+            A_x1_y1,
+            A_x2_y1,
+            A_x1_y2,
+            A_x2_y2,
+            u,
+            v
+          );
+
+          execMat.update(row, col, "R", NR);
+          execMat.update(row, col, "G", NG);
+          execMat.update(row, col, "B", NB);
+          execMat.update(row, col, "A", NA);
         });
 
-        return;
+        return execMat;
+      // 三次样条插值 4 * 4矩阵加权平均
       case this.RESIZE.INTER_CUBIC:
-        return;
-      case this.RESIZE.INTER_AREA:
-        return;
-      case this.RESIZE.INTER_LANCZOS4:
-        return;
+        execMat.recycle((pixel, row, col) => {
+          const srcX = Math.floor(row * xRatio);
+          const srcY = Math.floor(col * yRatio);
+
+          const u = srcX - row,
+            v = srcY - col;
+          let NR = 0,
+            NG = 0,
+            NB = 0,
+            NA = 0;
+
+          for (let x = -1; x < 3; x++) {
+            for (let y = -1; y < 3; y++) {
+              let offsetX = srcX + x;
+              let offsetY = srcY + y;
+              offsetX = Math.max(offsetX, 0);
+              offsetX = Math.min(offsetX, mat.rows - 1);
+
+              offsetY = Math.max(offsetY, 0);
+              offsetY = Math.min(offsetY, mat.cols - 1);
+            }
+          }
+        });
+        return execMat;
+      // case this.RESIZE.INTER_AREA:
+      //   return execMat;
+      // case this.RESIZE.INTER_LANCZOS4:
+      //   return execMat;
     }
   }
 
@@ -446,14 +529,35 @@ class PixelWind {
     });
   }
 
-  // 二值化处理，
-  // 参数 1. 灰度值 2. 阈值 3. 最大值 4. 二值化类型
+  // 二值化类型
+  THRESHOLD_TYPE = {
+    BINARY: 1, // 只有大于阈值的像素灰度值值为最大值，其他像素灰度值值为最小值。
+    BINARY_INV: 2, // 与 1相反
+    TRUNC: 3, // 截断阈值处理，大于阈值的像素灰度值被赋值为阈值，小于阈值的像素灰度值保持原值不变。
+    TOZERO: 4, // 置零阈值处理，只有大于阈值的像素灰度值被置为0，其他像素灰度值保持原值不变。
+    TOZERO_INV: 5, // 反置零阈值处理，只有小于阈值的像素灰度值被置为0，其他像素灰度值保持原值不变。
+  };
+  // 二值化模式  表示阈值处理后，如何处理大于阈值的像素值。
+  THRESHOLD_MODE = {
+    THRESHOLD: 1, // 表示直接使用阈值处理。
+    OTSU: 2, // 表示使用Otsu's二值化方法进行阈值处理。
+    MANUAL: 3, // 表示使用手动指定的阈值进行阈值处理
+  };
+
+  /*
+   * 二值化处理
+   * @param mat 待处理图像
+   * @param threshold 阈值
+   * @param maxValue 最大值
+   * @param type 阈值处理类型
+   * @param mode 阈值处理模式
+   */
   threshold(
     mat: Mat,
     threshold: number,
     maxValue: number,
-    type: 1 | 2 | 3 | 4 | 5 = PixelWind.THRESH_BINARY,
-    mode: 1 | 2 | 3 = PixelWind.THRESH_MODE_THRESHOLD
+    type = this.THRESHOLD_TYPE.BINARY,
+    mode = this.THRESHOLD_MODE.THRESHOLD
   ) {
     mat.recycle((_pixel, row, col) => {
       const [R, G, B] = mat.at(row, col);
@@ -464,7 +568,7 @@ class PixelWind {
 
       switch (mode) {
         // 固定阈值模式
-        case PixelWind.THRESH_MODE_THRESHOLD:
+        case this.THRESHOLD_MODE.THRESHOLD:
           newValue = PixelWind.calcThresholdValue(
             gray,
             threshold,
@@ -472,7 +576,7 @@ class PixelWind {
             type
           );
           break;
-        case PixelWind.THRESH_MODE_OTSU:
+        case this.THRESHOLD_MODE.OTSU:
           // Otsu模式
           newValue = PixelWind.calcThresholdValue(
             gray,
@@ -481,7 +585,7 @@ class PixelWind {
             type
           );
           break;
-        case PixelWind.THRESH_MODE_MANUAL:
+        case this.THRESHOLD_MODE.MANUAL:
           // 手动模式
           newValue = PixelWind.calcThresholdValue(
             gray,
@@ -693,52 +797,33 @@ class PixelWind {
     return kernel;
   }
 
-  // 二值化类型
-  // 只有大于阈值的像素灰度值值为最大值，其他像素灰度值值为最小值。
-  static readonly THRESH_BINARY: 1 = 1;
-  // 与 1相反
-  static readonly THRESH_BINARY_INV: 2 = 2;
-  // 截断阈值处理，大于阈值的像素灰度值被赋值为阈值，小于阈值的像素灰度值保持原值不变。
-  static readonly THRESH_TRUNC: 3 = 3;
-  // 置零阈值处理，只有大于阈值的像素灰度值被置为0，其他像素灰度值保持原值不变。
-  static readonly THRESH_TOZERO: 4 = 4;
-  // 反置零阈值处理，只有小于阈值的像素灰度值被置为0，其他像素灰度值保持原值不变。
-  static readonly THRESH_TOZERO_INV = 5;
-  // 二值化模式  表示阈值处理后，如何处理大于阈值的像素值。
-  // 表示直接使用阈值处理。
-  static readonly THRESH_MODE_THRESHOLD: 1 = 1;
-  // 表示使用Otsu's二值化方法进行阈值处理。
-  static readonly THRESH_MODE_OTSU: 2 = 2;
-  // 表示使用手动指定的阈值进行阈值处理
-  static readonly THRESH_MODE_MANUAL: 3 = 3;
-
   //根据二值化类型，计算阈值
   // 参数 1. 灰度值 2. 阈值 3. 最大值 4. 二值化类型
   static calcThresholdValue(
     value: number,
     threshold: number,
     maxValue: number,
-    type: 1 | 2 | 3 | 4 | 5
+    type: number
   ) {
     let newValue: number;
     switch (type) {
-      case PixelWind.THRESH_BINARY:
+      case 1:
         // THRESH_BINARY
         newValue = value < threshold ? 0 : maxValue;
         break;
-      case PixelWind.THRESH_BINARY_INV:
+      case 2:
         // THRESH_BINARY_INV
         newValue = value < threshold ? maxValue : 0;
         break;
-      case PixelWind.THRESH_TRUNC:
+      case 3:
         // THRESH_TRUNC
         newValue = value < threshold ? value : threshold;
         break;
-      case PixelWind.THRESH_TOZERO:
+      case 4:
         // THRESH_TOZERO
         newValue = value < threshold ? 0 : value;
         break;
-      case PixelWind.THRESH_TOZERO_INV:
+      case 5:
         // THRESH_TOZERO_INV
         newValue = value < threshold ? value : 0;
         break;

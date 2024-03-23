@@ -34,12 +34,9 @@ const configs = [
             path.resolve(__dirname, '..', 'lib/index.ts')
         ],
         write: true,
-        // minify: true,
-    });
-    const esmFs = await fs.statSync(path.resolve(__dirname, '..', 'modules/index.mjs'));
-    files.push({ name: path.resolve(__dirname, '..', 'modules/index.mjs'), size: getFileSize(esmFs.size) })
-
-    await esbuild.build({
+        minify: true,
+    },
+    {
         format: 'cjs',
         outfile: path.resolve(__dirname, '..', 'modules/index.cjs'),
         entryPoints: [
@@ -59,7 +56,7 @@ const configs = [
         globalName: 'pw',
         minify: true,
     }
-]
+];
 
 async function start() {
 

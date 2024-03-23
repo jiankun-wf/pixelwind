@@ -1,29 +1,42 @@
-# 图像处理库pixelwind之github分库
+# 图像处理库 pixelwind 之 github 分库
+
 示例页：https://jiankun-wf.github.io/pixelwind/
 
 ## 大小仅为 20kb 但是可以随意操纵 RGBA 类型的像素通道
 
 ## 目前实现了 以下快捷功能：
 
-1. gray（灰度值处理），参数：mat 数据。加权平均法计算
-2. fade（图像擦退效果），参数：mat 数据、擦退模式（深、浅）、擦退比例。
-3. native（纯色化处理，非白非透明像素一色化），参数：mat 数据、色值（hex）。
-4. nativeRollback（纯色化反转），参数：mat 数据。
-5. dropTransparent（去除透明像素），参数：mat 数据、透明像素将要转化的色值
-6. colorRollback（色值反转），参数：mat 数据
-7. medianBlur（中值滤波/模糊），去除椒盐与胡椒噪点，参数：mat 数据、模糊半径（奇数）
-8. gaussianBlur（高斯滤波/模糊），参数：mat 数据、模糊半径（奇数）、sigmaX（x 方差）、sigmaY（y 方差）
-9. LUT（色值增强），参数：mat 数据、lutTable（查找表（Look-Up Table）的数据结构，用于存储像素颜色或像素值之间的映射关系）。
-10. threshold（二值化处理），参数：mat 数据、阈值（0-255）、最大阈值、阈值类型、阈值模式。
+|      方法名       |     说明     |                                      参数                                      | 返回类型 | 执行结果                                                                                                                                            |
+| :---------------: | :----------: | :----------------------------------------------------------------------------: | :------: | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+|      resize       |     缩放     |        `mat: Mat, scaleWidth: number, scaleHeight: number, mode: 1,2,3`        |   Mat    | 返回新图像数据，将图像按指定宽度与高度进行缩放，mode 为最近邻插值（最快，质量差）、双线性插值（默认，兼顾质量速度）、三次线性插值（速度慢，质量高） |
+|       fade        |   线性擦退   |                  `mat: Mat, mode: FadeMode, percent: number`                   |   void   | 更改源图像数据， 按比例使得图像变白，可由 mode 控制从深色还是浅色开始擦退                                                                           |
+|      native       |  纯色化处理  |                          `mat: Mat, color: Hexcolor`                           |   void   | 更改源图像数据, 使得图像中的非白与非透明像素变为指定颜色 color 为 hex 格式                                                                          |
+|  nativeRollback   |   纯色反转   |                                   `mat: Mat`                                   |   void   | 更改源图像数据, 使得纯色化处理的图片非白变白，白变非白                                                                                              |
+|  dropTransparent  | 去除透明像素 |                          `mat: Mat, color: HexColor`                           |   void   | 更改源图像数据, 使得透明像素变为指定颜色（如: #FFFFFFEC）                                                                                           |
+|   colorRollback   |   颜色反转   |                                   `mat: Mat`                                   |   void   | 更改源图像数据, 使得图像的 RGBA 通道全部反转(255 - x)                                                                                               |
+|    medianBlur     |   中值滤波   |                           `mat: Mat, ksize: number`                            |   void   | 更改源图像数据, 使得图像按模糊度进行模糊，通常用来去除椒盐噪点与胡椒噪点                                                                            |
+|   gaussianBlur    |   高斯滤波   |           `mat: Mat, ksize: number, sigmaX: number, sigmaY: number`            |   void   | 更改源图像数据, 使得图像以高斯函数的形式进行模糊                                                                                                    |
+|     meanBlur      |   均值滤波   |                           `mat: Mat, ksize: number`                            |   void   | 更改源图像数据, 使得图像按模糊进行模糊                                                                                                              |
+|        LUT        |   色彩增强   |                    `mat: Mat, lutTable?: Uint8ClampedArray`                    |   void   | 更改原图像数据，使得图像以 lut 查找表进行色彩增强，不同的查找表会有不同效果，比如：亮度、对比度、鲜艳度，都会有一套不同的查找表参数                 |
+|     threshold     |  二值化处理  |          `mat: Mat, threshold: number, maxValue: number,  type, mode`          |   void   | 更改源图像数据，实现 opencv 的全部二值化处理                                                                                                        |
+|     dropWhite     |  去除白像素  |                                   `mat: Mat`                                   |   void   | 更改原图像数据，将白色背景变透明                                                                                                                    |
+|       gray        |   灰度滤镜   |                                   `mat: Mat`                                   |   void   | 更改原图像数据，将图像按照国际化公式处理为灰色图像                                                                                                  |
+| groundGlassFilter |  毛玻璃滤镜  |                `mat: Mat, offset: number，bothFamily: boolean`                 |   void   | 更改原图像数据，对图像施加毛玻璃特效，偏移量越大越明显；当图像色彩纹理不太复杂时，x，y 的坐标像素会使用不同的随机偏移                               |
+|  nostalgiaFilter  |   怀旧滤镜   |                                   `mat: Mat`                                   |   void   | 更改原图像数据，使得图像变为怀旧风格                                                                                                                |
+|  fleetingFilter   |   流年滤镜   |                         `mat: Mat, ksize: number = 12`                         |   void   | 更改原图像数据，使得图像变为流年风格                                                                                                                |
+|  sunLightFilter   |   光照滤镜   | `mat: Mat, centerX: number, centerY: number, radius: number, strength: number` |   void   | 更改原图像数据，使得图像再指定中心点与半径的圆处添加光照效果                                                                                        |
 
 ## Mat 数据结构为存放 RGBA 像素的 Uint8ClampedArray 的 TypedArray，有以下属性和方法：
 
 ### 属性
 
-1. rows、cols，行数、列数
-2. size: { width, height }，图像宽、高
-3. channels，通道数（RGBA），固定为 4
-4. data，像素数据
+|   参数   |      说明      |                类型                 |
+| :------: | :------------: | :---------------------------------: |
+|   rows   |    像素行数    |              `number`               |
+|   cols   |    像素列数    |              `number`               |
+| channels | 通道数固定为 4 |              `number`               |
+|   size   |   图像的大小   | `{ width: number; height: number }` |
+|   data   |  储存图像数据  |         `Uint8ClampedArray`         |
 
 ### 方法
 
