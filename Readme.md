@@ -8,7 +8,6 @@
 
 |      方法名       |     说明     |                                      参数                                      | 返回类型 | 执行结果                                                                                                                                            |
 | :---------------: | :----------: | :----------------------------------------------------------------------------: | :------: | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-|      resize       |     缩放     |        `mat: Mat, scaleWidth: number, scaleHeight: number, mode: 1,2,3`        |   Mat    | 返回新图像数据，将图像按指定宽度与高度进行缩放，mode 为最近邻插值（最快，质量差）、双线性插值（默认，兼顾质量速度）、三次线性插值（速度慢，质量高） |
 |       fade        |   线性擦退   |                  `mat: Mat, mode: FadeMode, percent: number`                   |   void   | 更改源图像数据， 按比例使得图像变白，可由 mode 控制从深色还是浅色开始擦退                                                                           |
 |      native       |  纯色化处理  |                          `mat: Mat, color: Hexcolor`                           |   void   | 更改源图像数据, 使得图像中的非白与非透明像素变为指定颜色 color 为 hex 格式                                                                          |
 |  nativeRollback   |   纯色反转   |                                   `mat: Mat`                                   |   void   | 更改源图像数据, 使得纯色化处理的图片非白变白，白变非白                                                                                              |
@@ -24,7 +23,8 @@
 | groundGlassFilter |  毛玻璃滤镜  |                `mat: Mat, offset: number，bothFamily: boolean`                 |   void   | 更改原图像数据，对图像施加毛玻璃特效，偏移量越大越明显；当图像色彩纹理不太复杂时，x，y 的坐标像素会使用不同的随机偏移                               |
 |  nostalgiaFilter  |   怀旧滤镜   |                                   `mat: Mat`                                   |   void   | 更改原图像数据，使得图像变为怀旧风格                                                                                                                |
 |  fleetingFilter   |   流年滤镜   |                         `mat: Mat, ksize: number = 12`                         |   void   | 更改原图像数据，使得图像变为流年风格                                                                                                                |
-|  sunLightFilter   |   光照滤镜   | `mat: Mat, centerX: number, centerY: number, radius: number, strength: number` |   void   | 更改原图像数据，使得图像再指定中心点与半径的圆处添加光照效果                                                                                        |
+|  sunLightFilter   |   光照滤镜   | `mat: Mat, centerX: number, centerY: number, radius: number, strength: number` |   void   | 更改原图像数据，使得图像再指定中心点与半径的圆处添加光照效果  |
+|      resize       |     缩放     |        `mat: Mat, scaleWidth: number, scaleHeight: number, mode: 1,2,3`        |   Mat    | 返回新图像数据，将图像按指定宽度与高度进行缩放，mode 为最近邻插值（最快，质量差）、双线性插值（默认，兼顾质量速度）、三次线性插值（速度慢，质量高） |
 
 ## Mat 数据结构为存放 RGBA 像素的 Uint8ClampedArray 的 TypedArray，有以下属性和方法：
 
