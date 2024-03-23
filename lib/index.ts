@@ -5,13 +5,6 @@ type B = number;
 type A = number;
 type Pixel = [R, G, B, A];
 
-type UpdatePixelParam = [
-  number, // row
-  number, // col
-  "R" | "G" | "B" | "A", // 这个像素的通道
-  number // value
-];
-
 const errorlog = (text: string) => {
   throw Error(text);
 };
@@ -758,31 +751,6 @@ class Mat {
     this.data = new Uint8ClampedArray(0);
   }
 
-  // 更耗时间所以放弃
-  // useMultipleUpdate() {
-  //   const collectList: Array<UpdatePixelParam> = [];
-
-  //   const collect = (...args: UpdatePixelParam[]) => {
-  //     const al = args.length;
-  //     for (let i = 0; i < al; i++) {
-  //       collectList.push(args[i]);
-  //     }
-  //   };
-
-  //   const exec = () => {
-  //     const l = collectList.length;
-
-  //     for (let i = 0; i < l; i++) {
-  //       const [row, col, type, value] = collect[i];
-  //       this.update(row, col, type, value);
-  //     }
-
-  //     collectList.splice(0, l);
-  //   };
-
-  //   return { exec: exec.bind.bind(this), collect };
-  // }
-
   update(row: number, col: number, type: "R" | "G" | "B" | "A", value: number) {
     const { data } = this;
     const [R, G, B, A] = this.getAddress(row, col);
@@ -903,5 +871,4 @@ class Mat {
 }
 
 const pw = new PixelWind();
-// window.pw = new PixelWind();
 export { pw };

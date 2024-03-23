@@ -25,7 +25,7 @@ const startServer = () => {
         console.log(chalk.cyan.underline(`http://localhost:${resultPort}`));
         console.log(chalk.cyan.underline(`http://${Ip}:${resultPort}`));
         const isOpen = process.argv.some(arg => arg === '--openBroswer=true');
-        isOpen && open(`http://localhost:${resultPort}`)
+        isOpen && open(`http://localhost:${resultPort}`);
     });
 };
 

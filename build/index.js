@@ -25,13 +25,9 @@ const getFileSize = (size, unit = 0) => {
     }
     return sizeInKB.toFixed(2) + sizeUnits[unit];
 }
-async function start() {
 
-    const files = []
-
-    const d = Date.now();
-
-    await esbuild.build({
+const configs = [
+    {
         format: 'esm',
         outfile: path.resolve(__dirname, '..', 'modules/index.mjs'),
         entryPoints: [
@@ -39,11 +35,8 @@ async function start() {
         ],
         write: true,
         minify: true,
-    });
-    const esmFs = await fs.statSync(path.resolve(__dirname, '..', 'modules/index.mjs'));
-    files.push({ name: path.resolve(__dirname, '..', 'modules/index.mjs'), size: getFileSize(esmFs.size) })
-
-    await esbuild.build({
+    },
+    {
         format: 'cjs',
         outfile: path.resolve(__dirname, '..', 'modules/index.cjs'),
         entryPoints: [
@@ -51,12 +44,8 @@ async function start() {
         ],
         write: true,
         minify: true,
-    });
-    const cjsFs = await fs.statSync(path.resolve(__dirname, '..', 'modules/index.cjs'));
-    files.push({ name: path.resolve(__dirname, '..', 'modules/index.cjs'), size: getFileSize(cjsFs.size) })
-
-
-    await esbuild.build({
+    },
+    {
         format: 'iife',
         outfile: path.resolve(__dirname, '..', 'modules/index.js'),
         entryPoints: [
@@ -66,9 +55,22 @@ async function start() {
         write: true,
         globalName: 'pw',
         minify: true,
-    });
-    const broswerFs = await fs.statSync(path.resolve(__dirname, '..', 'modules/index.js'));
-    files.push({ name: path.resolve(__dirname, '..', 'modules/index.js'), size: getFileSize(broswerFs.size) })
+    }
+]
+
+async function start() {
+
+    const files = []
+
+    const d = Date.now();
+
+    for (const config of configs) {
+        const { outfile } = config;
+        await esbuild.build(config);
+
+        const fileInfo = await fs.statSync(outfile);
+        files.push({ name: outfile, size: getFileSize(fileInfo.size) })
+    }
 
     const de = Date.now();
 
@@ -81,7 +83,7 @@ async function start() {
 
     console.log(chalk.cyan('-----------------------------------------------------------'))
 
-    console.log(chalk.green(`Build complete! Use total ${(de - d) / 1000}s`))
+    console.log(chalk.green(`✨ [PixelWind] Build complete! Use total ${(de - d) / 1000}s`))
 }
 
 
