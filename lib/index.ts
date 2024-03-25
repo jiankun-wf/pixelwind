@@ -110,10 +110,7 @@ class PixelWind {
           const scaleY = Math.round(col * yRatio);
           const [R, G, B, A] = mat.at(scaleX, scaleY);
 
-          execMat.update(row, col, "R", R);
-          execMat.update(row, col, "G", G);
-          execMat.update(row, col, "B", B);
-          execMat.update(row, col, "A", A);
+          execMat.update(row, col, R, G, B, A);
         });
         return execMat;
       // 双线性插值法
@@ -171,10 +168,7 @@ class PixelWind {
             v
           );
 
-          execMat.update(row, col, "R", NR);
-          execMat.update(row, col, "G", NG);
-          execMat.update(row, col, "B", NB);
-          execMat.update(row, col, "A", NA);
+          execMat.update(row, col, NR, NG, NB, NA);
         });
 
         return execMat;
@@ -225,9 +219,7 @@ class PixelWind {
         mat.recycle((pixel, row, col) => {
           const [R, G, B] = pixel;
           if (R + G + B > CR + CG + CB) {
-            mat.update(row, col, "R", 255);
-            mat.update(row, col, "G", 255);
-            mat.update(row, col, "B", 255);
+            mat.update(row, col, 255, 255, 255);
           }
         });
         break;
@@ -235,9 +227,7 @@ class PixelWind {
         mat.recycle((pixel, row, col) => {
           const [R, G, B] = pixel;
           if (R + G + B < CR + CG + CB) {
-            mat.update(row, col, "R", 255);
-            mat.update(row, col, "G", 255);
-            mat.update(row, col, "B", 255);
+            mat.update(row, col, 255, 255, 255);
           }
         });
         break;
@@ -256,9 +246,7 @@ class PixelWind {
     mat.recycle((pixel, row, col) => {
       const [R, G, B] = pixel;
       if (R !== 255 || G !== 255 || B !== 255) {
-        mat.update(row, col, "R", NR);
-        mat.update(row, col, "G", NG);
-        mat.update(row, col, "B", NB);
+        mat.update(row, col, NR, NG, NB);
       }
     });
   }
@@ -285,13 +273,9 @@ class PixelWind {
         G === currentColor[1] &&
         B === currentColor[2]
       ) {
-        mat.update(row, col, "R", 255);
-        mat.update(row, col, "G", 255);
-        mat.update(row, col, "B", 255);
+        mat.update(row, col, 255, 255, 255);
       } else {
-        mat.update(row, col, "R", currentColor[0]);
-        mat.update(row, col, "G", currentColor[1]);
-        mat.update(row, col, "B", currentColor[2]);
+        mat.update(row, col, currentColor[0], currentColor[1], currentColor[2]);
       }
     });
   }
@@ -310,10 +294,7 @@ class PixelWind {
     mat.recycle((pixel, row, col) => {
       const A = pixel[3];
       if (A === 0) {
-        mat.update(row, col, "R", NR);
-        mat.update(row, col, "G", NG);
-        mat.update(row, col, "B", NB);
-        mat.update(row, col, "A", NA);
+        mat.update(row, col, NR, NG, NB, NA);
       }
     });
   }
@@ -322,10 +303,8 @@ class PixelWind {
   colorRollback(mat: Mat) {
     mat.recycle((pixel, row, col) => {
       const [R, G, B, A] = pixel;
-      mat.update(row, col, "R", 255 - R);
-      mat.update(row, col, "G", 255 - G);
-      mat.update(row, col, "B", 255 - B);
-      mat.update(row, col, "A", 255 - A);
+
+      mat.update(row, col, 255 - R, 255 - G, 255 - B, 255 - A);
     });
   }
 
@@ -334,9 +313,7 @@ class PixelWind {
     mat.recycle((pixel, row, col) => {
       const [R, G, B] = pixel;
       const Gray = Math.floor(PixelWind.rgbToGray(R, G, B));
-      mat.update(row, col, "R", Gray);
-      mat.update(row, col, "G", Gray);
-      mat.update(row, col, "B", Gray);
+      mat.update(row, col, Gray, Gray, Gray);
     });
   }
 
@@ -398,9 +375,7 @@ class PixelWind {
       }
 
       // 设置中位数灰度的还原色
-      mat.update(row, col, "R", NR);
-      mat.update(row, col, "G", NG);
-      mat.update(row, col, "B", NB);
+      mat.update(row, col, NR, NG, NB);
       // mat.update(row, col, "A", NA);
     });
   }
@@ -451,10 +426,14 @@ class PixelWind {
         }
       }
 
-      mat.update(row, col, "R", Math.round(NR));
-      mat.update(row, col, "G", Math.round(NG));
-      mat.update(row, col, "B", Math.round(NB));
-      mat.update(row, col, "A", Math.round(NA));
+      mat.update(
+        row,
+        col,
+        Math.round(NR),
+        Math.round(NG),
+        Math.round(NB),
+        Math.round(NA)
+      );
     });
   }
   // 均值滤波
@@ -493,10 +472,14 @@ class PixelWind {
         }
       }
 
-      mat.update(row, col, "R", Math.round(NR / kernelSize));
-      mat.update(row, col, "G", Math.round(NG / kernelSize));
-      mat.update(row, col, "B", Math.round(NB / kernelSize));
-      mat.update(row, col, "A", Math.round(NA / kernelSize));
+      mat.update(
+        row,
+        col,
+        Math.round(NR / kernelSize),
+        Math.round(NG / kernelSize),
+        Math.round(NB / kernelSize),
+        Math.round(NA / kernelSize)
+      );
     });
   }
 
@@ -523,9 +506,7 @@ class PixelWind {
     mat.recycle((pixel, row, col) => {
       const [R, G, B] = pixel;
 
-      mat.update(row, col, "R", lutTable[R]);
-      mat.update(row, col, "G", lutTable[G]);
-      mat.update(row, col, "B", lutTable[B]);
+      mat.update(row, col, lutTable[R], lutTable[G], lutTable[B]);
     });
   }
 
@@ -596,9 +577,7 @@ class PixelWind {
           break;
       }
 
-      mat.update(row, col, "R", newValue);
-      mat.update(row, col, "G", newValue);
-      mat.update(row, col, "B", newValue);
+      mat.update(row, col, newValue, newValue, newValue);
     });
   }
 
@@ -607,7 +586,7 @@ class PixelWind {
     mat.recycle((pixel, row, col) => {
       const [R, G, B, A] = pixel;
       if (R === 255 && G === 255 && B === 255 && A !== 0) {
-        mat.update(row, col, "A", 0);
+        mat.update(row, col, void 0, void 0, void 0, 0);
       }
     });
   }
@@ -630,10 +609,8 @@ class PixelWind {
         const offsetY =
           col + (bothFamily ? index : Math.floor(Math.random() * offset));
         const [R, G, B, A] = mat.at(offsetX, offsetY);
-        mat.update(row, col, "R", R);
-        mat.update(row, col, "G", G);
-        mat.update(row, col, "B", B);
-        mat.update(row, col, "A", A);
+
+        mat.update(row, col, R, G, B, A);
       }
     }
   }
@@ -648,9 +625,7 @@ class PixelWind {
       const NG = Math.min(0.349 * R + 0.686 * G + 0.168 * B, 255);
       const NB = Math.min(0.272 * R + 0.534 * G + 0.131 * B, 255);
 
-      mat.update(row, col, "R", NR);
-      mat.update(row, col, "G", NG);
-      mat.update(row, col, "B", NB);
+      mat.update(row, col, NR, NG, NB);
     });
   }
 
@@ -664,7 +639,7 @@ class PixelWind {
       const B = pixel[2];
 
       const NB = Math.sqrt(B) * size;
-      mat.update(row, col, "B", NB);
+      mat.update(row, col, void 0, void 0, NB);
     });
   }
 
@@ -697,9 +672,13 @@ class PixelWind {
         );
 
         // 判断R的边缘值 0 - 255 然后赋值
-        mat.update(row, col, "R", Math.min(255, Math.max(0, R + suffix)));
-        mat.update(row, col, "G", Math.min(255, Math.max(0, G + suffix)));
-        mat.update(row, col, "B", Math.min(255, Math.max(0, B + suffix)));
+        mat.update(
+          row,
+          col,
+          Math.min(255, Math.max(0, R + suffix)),
+          Math.min(255, Math.max(0, G + suffix)),
+          Math.min(255, Math.max(0, B + suffix))
+        );
       }
     });
   }
@@ -910,23 +889,14 @@ class Mat {
     this.data = new Uint8ClampedArray(0);
   }
 
-  update(row: number, col: number, type: "R" | "G" | "B" | "A", value: number) {
+  update(row: number, col: number, ...args: number[]) {
     const { data } = this;
-    const [R, G, B, A] = this.getAddress(row, col);
+    const pixelAddress = this.getAddress(row, col);
 
-    switch (type) {
-      case "R":
-        data[R] = value;
-        break;
-      case "G":
-        data[G] = value;
-        break;
-      case "B":
-        data[B] = value;
-        break;
-      case "A":
-        data[A] = value;
-        break;
+    for (let i = 0; i < 4; i++) {
+      if (args[i] !== void 0) {
+        data[pixelAddress[i]] = args[i];
+      }
     }
   }
 
