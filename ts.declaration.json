@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+      "target": "ESNEXT",
+      "useDefineForClassFields": true,
+      "module": "ESNEXT",
+      "lib": ["ESNEXT", "DOM", "DOM.Iterable"],
+      "skipLibCheck": true,
+  
+      "moduleResolution": "Node",
+      "isolatedModules": true,
+      "noEmit": false,
+      "emitDeclarationOnly": true,
+      "declaration": true,
+      "jsx": "preserve",
+  
+      "strict": false,
+      "noImplicitAny": false,
+      "noImplicitThis": false,
+      "strictNullChecks": false,
+      "strictFunctionTypes": false,
+      "noUnusedLocals": false,
+      "noUnusedParameters": false,
+      "noImplicitReturns": false,
+      "allowUnusedLabels": true,
+      "allowUnreachableCode": true,
+      "outDir": "modules"
+    },
+    "include": ["lib/*.ts"]
+  }
+  

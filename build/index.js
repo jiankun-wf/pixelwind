@@ -1,30 +1,11 @@
 
 const esbuild = require('esbuild')
-const chalk = require('chalk')
-const path = require('path')
-const fs = require('fs')
+const path = require('path');
+const { postOutputFiles } = require('./post');
 
-esbuild.outdir = path.resolve(__dirname, '..', 'modules');
+const outdir = path.resolve(__dirname, '..', 'modules');
 
-
-const sizeUnits = [
-    'KB',
-    'MB',
-    'GB',
-    'TB',
-    'PB',
-    'EB',
-    'ZB',
-    'YB'
-]
-
-const getFileSize = (size, unit = 0) => {
-    const sizeInKB = size / 1024;
-    if (sizeInKB > 1024) {
-        return getFileSize(sizeInKB / 1024, ++unit)
-    }
-    return sizeInKB.toFixed(2) + sizeUnits[unit];
-}
+esbuild.outdir = outdir;
 
 const configs = [
     {
@@ -60,30 +41,13 @@ const configs = [
 
 async function start() {
 
-    const files = []
-
-    const d = Date.now();
+    const startBuildTimeStamp = Date.now();
 
     for (const config of configs) {
-        const { outfile } = config;
         await esbuild.build(config);
-
-        const fileInfo = await fs.statSync(outfile);
-        files.push({ name: outfile, size: getFileSize(fileInfo.size) })
     }
 
-    const de = Date.now();
-
-
-    console.log(chalk.cyan('-----------------------------------------------------------'))
-
-    files.forEach(file => {
-        console.log(chalk.blueBright(`${file.name} - ${file.size}`));
-    })
-
-    console.log(chalk.cyan('-----------------------------------------------------------'))
-
-    console.log(chalk.green(`✨ [PixelWind] Build complete! Use total ${(de - d) / 1000}s`))
+    postOutputFiles(outdir, startBuildTimeStamp);
 }
 
 
